@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-17",
+  "week": 1,
+  "block": "Блок 1. Возвращение",
+  "title": "Кардио",
+  "performedOn": "2026-10-17",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Скакалка 8×(1 мин прыжков / 1 мин отдых) + прогулка 20 мин",
+      "done": true
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "patrol": true
+  },
+  "updatedAt": 1793200874708
+}
