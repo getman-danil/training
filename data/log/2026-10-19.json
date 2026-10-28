@@ -4,9 +4,9 @@
   "block": "Блок 1. Возвращение",
   "title": "А — тяга + присед",
   "performedOn": "2026-10-23",
-  "finished": false,
-  "finishedAt": null,
-  "dayNote": "",
+  "finished": true,
+  "finishedAt": "2026-10-28T16:18:46.612Z",
+  "dayNote": "+Скакалка 1, 1, 1 (минута через минуту)",
   "items": [
     {
       "type": "ex",
@@ -80,7 +80,11 @@
       "plan": "3×10",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        10,
+        10,
+        10
+      ],
       "note": ""
     }
   ],
@@ -88,9 +92,9 @@
   "game": {
     "monster": "Гоблин-шаман",
     "hp": 570,
-    "dealt": 468,
+    "dealt": 558,
     "overkill": 52,
     "killed": false
   },
-  "updatedAt": 1793204264919
+  "updatedAt": 1793204326612
 }
