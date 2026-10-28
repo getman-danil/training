@@ -71,7 +71,7 @@
       "reps": [
         null
       ],
-      "note": ""
+      "note": "Не понял как выполнять"
     },
     {
       "type": "ex",
@@ -79,7 +79,11 @@
       "plan": "3×1 мин",
       "planWeight": "",
       "weight": "",
-      "reps": [],
+      "reps": [
+        1,
+        1,
+        1
+      ],
       "note": ""
     }
   ],
@@ -87,9 +91,9 @@
   "game": {
     "monster": "Гоблин-шаман",
     "hp": 600,
-    "dealt": 420,
+    "dealt": 510,
     "overkill": 45,
     "killed": false
   },
-  "updatedAt": 1793200744698
+  "updatedAt": 1793200763016
 }
