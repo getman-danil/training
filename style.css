@@ -222,3 +222,5 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .pad button:active{background:rgba(201,162,74,.15);border-color:var(--gold)}
 .step input{caret-color:transparent}
 .pad button,.step input,.set{font-variant-numeric:lining-nums tabular-nums}
+
+.spec.lf{color:var(--gold);margin-top:6px}
