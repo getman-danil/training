@@ -190,9 +190,9 @@ export function kg(w) {
 
 // ---------- пересчёт урона под фактический вес ----------
 // Повтор с другим весом стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела
-// + отягощение − помощь резинки: убрал резинку 15 кг при весе 75 — каждый повтор весит 75/60 = 1,25 планового.
-export let BODYWEIGHT = 75;
-export function setBodyweight(v) { v = parseFloat(String(v || "").replace(",", ".")); BODYWEIGHT = v >= 30 && v <= 250 ? v : 75; }
+// + отягощение − помощь резинки: убрал резинку 15 кг при весе 96 — каждый повтор весит 96/81 ≈ 1,19 планового.
+export let BODYWEIGHT = 96;
+export function setBodyweight(v) { v = parseFloat(String(v || "").replace(",", ".")); BODYWEIGHT = v >= 30 && v <= 250 ? v : 96; }
 const bodyBased = w => /свой вес|резин/.test(w) || /^\s*\+/.test(w);
 export function loadFactor(it, li) {
   const pw = String(it.weight || "").toLowerCase(), aw = String(li?.weight ?? it.weight ?? "").toLowerCase();

@@ -514,8 +514,8 @@ function renderSettings() {
   <li>Permissions → Repository → <b>Contents: Read and write</b>. Срок — какой удобно (например, год).</li>
   <li>Скопируй токен и вставь сюда. Он хранится только в этом браузере и никуда, кроме GitHub, не отправляется.</li></ol></div>
   <h2 class="sec">ГЕРОЙ</h2>
-  <div class="set-form"><label>Вес тела, кг<input id="cfgBw" inputmode="decimal" value="${esc(S.meta.bodyweight || "")}" placeholder="75"></label></div>
-  <p class="help">Нужен, чтобы честно пересчитывать урон в упражнениях со своим весом: убрал резинку или повесил гирю — каждый повтор стоит больше. Пока не указан, считается 75 кг.</p>
+  <div class="set-form"><label>Вес тела, кг<input id="cfgBw" inputmode="decimal" value="${esc(S.meta.bodyweight || "")}" placeholder="96"></label></div>
+  <p class="help">Нужен, чтобы честно пересчитывать урон в упражнениях со своим весом: убрал резинку или повесил гирю — каждый повтор стоит больше. Пока не указан, считается 96 кг.</p>
   <h2 class="sec">РЕЗЕРВНАЯ КОПИЯ</h2>
   <div class="set-form"><button class="act" id="exp">СКАЧАТЬ JSON</button>
   <label>Загрузить из файла<input type="file" id="imp" accept="application/json"></label></div>
