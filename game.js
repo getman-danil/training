@@ -294,14 +294,14 @@ export function computePRs(logs) {
 // meta.gear  = { log: [{ at: "<дата>", eq: { weapon: itemId, armor, amulet, ring } }] }
 // Билд и снаряжение действуют на бои начиная с даты записи — прошлые бои не пересчитываются.
 export const STATS = [
-  { id: "str", name: "Сила", gen: "силы", per: "+6% опыта за урон в упражнениях с весом" },
-  { id: "end", name: "Выносливость", gen: "выносливости", per: "+5% опыта за урон без веса, EMOM и круги, +8% за патрули" },
-  { id: "agi", name: "Ловкость", gen: "ловкости", per: "+4% опыта за криты (личные рекорды)" },
-  { id: "wil", name: "Воля", gen: "воли", per: "+3,5% опыта за убийство, +1 день к окну реванша, +5% за реванш" },
-  { id: "lck", name: "Удача", gen: "удачи", per: "+6% шанс находки после боя (+60 опыта и вещь)" },
+  { id: "str", name: "Сила", gen: "силы", per: "+9,5% опыта за урон в упражнениях с весом" },
+  { id: "end", name: "Выносливость", gen: "выносливости", per: "+7% опыта за урон без веса, EMOM и круги, +11% за патрули" },
+  { id: "agi", name: "Ловкость", gen: "ловкости", per: "+5% опыта за криты (личные рекорды)" },
+  { id: "wil", name: "Воля", gen: "воли", per: "+5,5% опыта за убийство, +1 день к окну реванша, +5% за реванш" },
+  { id: "lck", name: "Удача", gen: "удачи", per: "+6% шанс находки после боя (+80 опыта и вещь), +4% золота" },
 ];
 export const STAT_BY_ID = Object.fromEntries(STATS.map(s => [s.id, s]));
-export const FIND_XP = 60, FIND_CHANCE = 0.06, FIND_MAX = 0.6;
+export const FIND_XP = 80, FIND_CHANCE = 0.06, FIND_MAX = 0.6;
 
 // Древо: у каждой характеристики своя ветка из 7 узлов.
 //        [малый 1]
@@ -318,12 +318,12 @@ const MAJORS = {
         { id: "titan", name: "Титан", desc: "Рекорд с новым весом: опыт крита ×1,6" }, { id: "breaker", name: "Раскол брони", desc: "Ещё +30% опыта за урон в упражнениях с весом" }],
   end: [{ id: "marathon", name: "Марафонец", desc: "Опыт за патрули ×1,75" }, { id: "secondwind", name: "Второе дыхание", desc: "Бодрость после таверны ×5" },
         { id: "rhythm", name: "Железный ритм", desc: "+50 опыта за неделю, где все обязательные монстры убиты" }, { id: "veteran", name: "Ветеран походов", desc: "+250 опыта за каждое зачищенное подземелье (80% монстров блока)" }],
-  agi: [{ id: "combo", name: "Серия ударов", desc: "Каждый следующий крит в бою даёт +12% опыта" }, { id: "precise", name: "Точный удар", desc: "Убийство с критом: +20 опыта" },
-        { id: "giant", name: "Убийца гигантов", desc: "Монстры ниже тебя не режут опыт, выше — дают до +80%" }, { id: "blademaster", name: "Мастер клинка", desc: "Весь опыт за криты +18%" }],
-  wil: [{ id: "stoic", name: "Стойкость", desc: "+1 заморозка серии" }, { id: "grudge", name: "Злопамятный", desc: "Опыт за реванш ×2" },
-        { id: "unbroken", name: "Несломленный", desc: "+1 заморозка серии и +20% опыта за убийство" }, { id: "headhunter", name: "Охотник за головами", desc: "Сбежавший монстр может вернуться дважды, реванш +100 опыта" }],
-  lck: [{ id: "seeker", name: "Кладоискатель", desc: "Шанс находки ×1,75" }, { id: "goldvein", name: "Золотая жила", desc: "Находки дают двойной опыт" },
-        { id: "coin", name: "Счастливая монета", desc: "Первый бой каждой недели — гарантированная находка" }, { id: "trophy", name: "Трофейщик", desc: "Босс всегда оставляет легендарную вещь" }],
+  agi: [{ id: "combo", name: "Серия ударов", desc: "Каждый следующий крит в бою даёт +12% опыта" }, { id: "precise", name: "Точный удар", desc: "Убийство с критом: +30 опыта" },
+        { id: "giant", name: "Убийца гигантов", desc: "Монстры ниже тебя режут опыт не больше чем на 4%, выше — дают до +60%" }, { id: "blademaster", name: "Мастер клинка", desc: "Весь опыт за криты +18%" }],
+  wil: [{ id: "stoic", name: "Стойкость", desc: "+1 заморозка серии и +10% опыта за убийство" }, { id: "grudge", name: "Злопамятный", desc: "Опыт за реванш ×2 и +10% опыта за убийство" },
+        { id: "unbroken", name: "Несломленный", desc: "+1 заморозка серии и +20% опыта за убийство" }, { id: "headhunter", name: "Охотник за головами", desc: "Сбежавший монстр может вернуться дважды, реванш +100 опыта, +18% опыта за убийство" }],
+  lck: [{ id: "seeker", name: "Кладоискатель", desc: "Шанс находки ×1,75" }, { id: "goldvein", name: "Золотая жила", desc: "+25% золота за убийства" },
+        { id: "merchant", name: "Друг торговца", desc: "Скидка 30% у торговца и в кузнице" }, { id: "trophy", name: "Трофейщик", desc: "Босс всегда оставляет легендарную вещь" }],
 };
 export const TREE = Object.fromEntries(STATS.map(({ id: st }) => {
   const sm = SMALL_NAMES[st].map((name, k) => ({ id: `${st}${k + 1}`, kind: "small", stat: st, name, desc: `+1 ${STAT_BY_ID[st].name}` }));
@@ -356,14 +356,38 @@ export const LEGENDARY = {
   ring: { name: "Перстень судьбы", fx: "leg-find", desc: "+10% к шансу находки" },
 };
 export const LEGENDARY_CHANCE = 0.25;
+// Мифическая — пробуждённая в кузнице легендарка. С боссов не падает, купить или сковать с нуля нельзя.
+export const MYTHIC = {
+  weapon: { name: "Пепельная погибель", fx: "myth-boss", desc: "Опыт за боссов ×2" },
+  armor: { name: "Чешуя первородного", fx: "myth-freeze", desc: "+2 заморозки серии" },
+  amulet: { name: "Сердце вулкана", fx: "myth-xp", desc: "+8% всего опыта за бои" },
+  ring: { name: "Перстень рока", fx: "myth-find", desc: "+15% к шансу находки" },
+};
+
+// ---------- золото, торговец, кузница ----------
+// Золото дают только убийства, то есть только выполненный план. Перебор, рекорды и патрули золота не дают.
+// meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
+export const GOLD_KILL = 10, GOLD_BOSS = 60;
+export const PRICE_COMMON = 50, FORGE_FEE = 30, MYTHIC_COST = 800;
+export const priceOf = (base, b) => Math.round(base * (hasPerk(b, "merchant") ? 0.7 : 1));
 const pick = (arr, key) => arr[Math.floor(hash01(key) * arr.length) % arr.length];
 // Вещь целиком выводится из своего id, поэтому одинакова на всех устройствах и ничего не хранится, кроме id.
-// id: "c:<дата>" — находка в обычном бою, "b:<дата>" — добыча с босса, "L:<дата>" — гарантированная легенда («Трофейщик»).
+// id: "c:<дата>" — находка в обычном бою, "b:<дата>" — добыча с босса, "L:<дата>" — гарантированная легенда («Трофейщик»),
+// "s:<слот>:<хар>:<n>" — куплена у торговца, "f:<слот>:<хар>:<хар>:<n>" — скована из двух обычных, "M:<id легендарки>" — мифическая.
+const FORGED = { weapon: "Кованый клинок", armor: "Кованая кираса", amulet: "Кованый оберег", ring: "Кованый перстень" };
 export function itemOf(id) {
-  const [src] = id.split(":");
-  const slot = pick(SLOTS, id + "#slot").id;
-  const stat = pick(STATS, id + "#stat").id;
-  if (src === "c") return { id, slot, rarity: "common", name: `${pick(ITEM_NAMES.common[slot], id + "#name")} ${STAT_BY_ID[stat].gen}`, stats: { [stat]: 1 }, nodes: [] };
+  const [src, ...p] = id.split(":");
+  if (src === "M") {
+    const base = itemOf(id.slice(2)), My = MYTHIC[base.slot], stat = Object.keys(base.stats)[0];
+    return { id, slot: base.slot, rarity: "mythic", name: My.name, stats: { [stat]: 5 }, nodes: [My.fx], desc: My.desc, from: base.id };
+  }
+  if (src === "f") {
+    const stats = {}; for (const s of [p[1], p[2]]) stats[s] = (stats[s] || 0) + 1;
+    return { id, slot: p[0], rarity: "rare", forged: true, name: `${FORGED[p[0]]} ${STAT_BY_ID[p[1]].gen}`, stats, nodes: [] };
+  }
+  const slot = src === "s" ? p[0] : pick(SLOTS, id + "#slot").id;
+  const stat = src === "s" ? p[1] : pick(STATS, id + "#stat").id;
+  if (src === "c" || src === "s") return { id, slot, rarity: "common", name: `${pick(ITEM_NAMES.common[slot], id + "#name")} ${STAT_BY_ID[stat].gen}`, stats: { [stat]: 1 }, nodes: [] };
   if (src === "L" || hash01(id + "#leg") < LEGENDARY_CHANCE) {
     const L = LEGENDARY[slot];
     return { id, slot, rarity: "legendary", name: L.name, stats: { [stat]: 3 }, nodes: [L.fx], desc: L.desc };
@@ -376,6 +400,7 @@ export function itemOf(id) {
 export function itemText(it) {
   const parts = Object.entries(it.stats).map(([s, v]) => `+${v} ${STAT_BY_ID[s].name}`);
   for (const n of it.nodes) parts.push(NODE_BY_ID[n] ? `узел «${NODE_BY_ID[n].name}»` : it.desc);
+  if (it.forged) parts.push("без узла");
   return parts.join(", ");
 }
 
@@ -384,7 +409,7 @@ function entryAt(log, iso) { let b = null; for (const e of log || []) if (e.at <
 // Вложенное вручную: очки характеристик и взятые узлы.
 export function allocAt(meta, iso) {
   const e = entryAt(meta?.build?.log, iso);
-  return { stats: { ...ZERO(), ...(e?.stats || {}) }, nodes: [...(e?.nodes || [])] };
+  return { stats: { ...ZERO(), ...(e?.stats || {}) }, nodes: (e?.nodes || []).filter(n => NODE_BY_ID[n]) };
 }
 export function gearAt(meta, iso) { return { ...(entryAt(meta?.gear?.log, iso)?.eq || {}) }; }
 // Итоговый билд на дату: вложенные очки + малые узлы + снаряжение. nodes включает узлы и эффекты легендарных вещей.
@@ -397,7 +422,7 @@ export function buildAt(meta, iso) {
 }
 export function currentBuild(meta) { return buildAt(meta, "9999-12-31"); }
 export function hasPerk(b, id) { return b.nodes.includes(id); }
-export function freezeLimit(meta) { const b = currentBuild(meta); return FREEZES + hasPerk(b, "stoic") + hasPerk(b, "unbroken") + hasPerk(b, "leg-freeze"); }
+export function freezeLimit(meta) { const b = currentBuild(meta); return FREEZES + hasPerk(b, "stoic") + hasPerk(b, "unbroken") + hasPerk(b, "leg-freeze") + 2 * hasPerk(b, "myth-freeze"); }
 export function canRespec(meta, today) { return !(meta?.build?.respecs || []).includes(weekOf(today).block); }
 // Дата, когда бой был на самом деле: от неё зависит, какой билд действовал.
 export function whenOf(day, L) { return L?.performedOn || day.on; }
@@ -414,7 +439,7 @@ function hash01(str) {
 }
 export function levelXpMod(mLvl, hLvl, b) {
   const diff = mLvl - hLvl;
-  if (hasPerk(b, "giant")) return Math.min(1.8, Math.max(1, 1 + 0.1 * diff));
+  if (hasPerk(b, "giant")) return Math.min(1.6, Math.max(0.96, 1 + 0.1 * diff));
   return Math.min(LVL_XP_MAX, Math.max(LVL_XP_MIN, 1 + LVL_XP_STEP * diff));
 }
 
@@ -467,17 +492,17 @@ export function summarize(logs, meta, today) {
   setBodyweight(meta?.bodyweight);
   const { prs, list: prList } = computePRs(logs);
   computeRevenge(logs, today, meta);
-  let revenges = 0, finds = 0;
+  let revenges = 0, finds = 0, gold = 0;
   const loot = [];
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
   const killed = {}, bossKills = [], perDay = {};
-  const tavernBuffWeeks = new Set(), coinWeeks = new Set();
+  const tavernBuffWeeks = new Set();
   for (const d of DAYS) {
     const L = logs[d.date]; if (!L) continue;
     const bd = buildAt(meta, whenOf(d, L)), st = bd.stats;
     if (isCardio(d)) {
       if (L.items?.some(x => x.done) || L.finished) {
-        const cx = Math.round(XP_CARDIO * (1 + 0.08 * st.end) * (hasPerk(bd, "marathon") ? 1.75 : 1));
+        const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end) * (hasPerk(bd, "marathon") ? 1.75 : 1));
         xp += cx; cardio++; perDay[d.date] = { xp: cx };
       }
       continue;
@@ -487,22 +512,25 @@ export function summarize(logs, meta, today) {
     // Опыт за урон считается от плана, а не от раздутых цифр здоровья: уровень монстра влияет только через mod.
     const heavyHp = b.exs.reduce((a, e) => a + (e.heavy ? e.dealt + e.over : 0), 0), allHp = b.exs.reduce((a, e) => a + e.dealt + e.over, 0);
     const heavyShare = allHp ? heavyHp / allHp : 0;
-    const statMul = 1 + heavyShare * (0.06 * st.str + (hasPerk(bd, "breaker") ? 0.3 : 0)) + (1 - heavyShare) * 0.05 * st.end;
+    const statMul = 1 + heavyShare * (0.095 * st.str + (hasPerk(bd, "breaker") ? 0.3 : 0)) + (1 - heavyShare) * 0.07 * st.end;
     let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
-    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "leg-boss") ? 1.5 : 1) : 1;
+    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) : 1;
     const dayPRs = Object.entries(prs[d.date] || {});
     const nPR = dayPRs.length;
     dayPRs.forEach(([, pr], k) => {
-      let x = XP_PR * (1 + 0.04 * st.agi);
+      let x = XP_PR * (1 + 0.05 * st.agi);
       if (pr.kind === "kg" && hasPerk(bd, "titan")) x *= 1.6;
       if (k > 0 && hasPerk(bd, "combo")) x *= 1.12;
       if (hasPerk(bd, "blademaster")) x *= 1.18;
       dx += Math.round(x);
     });
-    let find = 0;
+    let find = 0, dg = 0;
     if (b.killed) {
-      let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0)) * (1 + 0.035 * st.wil);
-      if (nPR && hasPerk(bd, "precise")) kx += 20;
+      // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
+      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0));
+      dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
+      let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0)) * (1 + 0.055 * st.wil);
+      if (nPR && hasPerk(bd, "precise")) kx += 30;
       dx += Math.round(kx * mod);
       kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++;
       if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0); revenges++; }
@@ -511,17 +539,14 @@ export function summarize(logs, meta, today) {
     }
     else if (L.finished && b.dealt > 0) fled++;
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
-    if (b.dealt > 0) {
-      if (hasPerk(bd, "coin") && !coinWeeks.has(d.week)) find = 1;
-      else if (hash01(d.date) < Math.min(FIND_MAX, FIND_CHANCE * st.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + (hasPerk(bd, "leg-find") ? 0.1 : 0))) find = 1;
-    }
-    if (b.dealt > 0) coinWeeks.add(d.week);
-    if (find) { finds++; dx += FIND_XP * (hasPerk(bd, "goldvein") ? 2 : 1); loot.push({ id: "c:" + d.date, date: d.date }); }
+    const findBonus = hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0;
+    if (b.dealt > 0 && hash01(d.date) < Math.min(FIND_MAX, FIND_CHANCE * st.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + findBonus)) find = 1;
+    if (find) { finds++; dx += FIND_XP; loot.push({ id: "c:" + d.date, date: d.date }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1); }
-    if (hasPerk(bd, "leg-xp")) dx = Math.round(dx * 1.05);
+    if (hasPerk(bd, "myth-xp")) dx = Math.round(dx * 1.08); else if (hasPerk(bd, "leg-xp")) dx = Math.round(dx * 1.05);
     if (L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22) nightOwl++;
-    xp += dx; perDay[d.date] = { xp: dx, battle: b, prs: nPR, find, mod, heroLvl: hLvl, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
+    xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
   // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
   for (const w of WEEKS) {
@@ -539,9 +564,14 @@ export function summarize(logs, meta, today) {
   const points = lv.level - 1 + bossKills.length, skillPoints = lv.level - 1;
   const build = currentBuild(meta);
   const spent = Object.values(build.alloc.stats).reduce((a, b) => a + b, 0), skillSpent = build.alloc.nodes.length;
-  const inventory = loot.map(x => ({ ...itemOf(x.id), date: x.date }));
-  const ach = achievements({ revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  return { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory };
+  // Покупки и ковка: добавляют вещи и тратят золото; израсходованные в кузнице вещи уходят из сумки.
+  const shop = meta?.shop?.log || [], used = new Set(shop.flatMap(e => e.use || []));
+  const spentGold = shop.reduce((a, e) => a + (e.cost || 0), 0);
+  for (const e of shop) loot.push({ id: e.id, date: e.at });
+  const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
+  const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
+  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
+  return { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold };
 }
 
 function dungeonCleared(n, logs) {
@@ -584,5 +614,8 @@ export function achievements(s) {
     A("perk1", "Свой путь", "Открыть первый большой узел древа", s.build.alloc.nodes.some(n => NODE_BY_ID[n]?.kind !== "small")),
     A("legend", "Легендарная добыча", "Получить легендарную вещь", s.inventory.some(i => i.rarity === "legendary")),
     A("find5", "Мародёр", "Сделать 5 находок", s.finds >= 5),
+    A("buy1", "Покупатель", "Купить вещь у торговца", s.bought >= 1),
+    A("forge1", "Кузнец", "Сковать редкую вещь", s.forged >= 1),
+    A("mythic", "Миф", "Пробудить легендарную вещь до мифической", s.mythics >= 1),
   ];
 }
