@@ -37,9 +37,15 @@ export const DUNGEONS = {
   3: { name: "Орочий лагерь", pool: ["orc-grunt", "orc-berserker", "orc-warg-rider"] },
   4: { name: "Драконьи горы", pool: ["dragon-drake", "dragon-wyvern", "dragon-drake"] },
   5: { name: "Тронный зал", pool: ["orc-grunt", "dragon-wyvern", "dragon-drake"] },
+  6: { name: "Пепельные руины", pool: ["orc-berserker", "goblin-chief", "undead-wraith"] },
+  7: { name: "Склеп (летняя сессия)", pool: ["undead-skeleton", "undead-ghoul", "undead-wraith"] },
+  8: { name: "Орочий лагерь", pool: ["orc-grunt", "orc-berserker", "orc-warg-rider"] },
+  9: { name: "Драконьи горы", pool: ["dragon-drake", "dragon-wyvern", "dragon-drake"] },
+  10: { name: "Тронный зал", pool: ["orc-warg-rider", "dragon-wyvern", "dragon-drake"] },
 };
 const MINIBOSS_BY_DATE = { "2026-11-13": "goblin-chief" };
-const BOSS_ORDER = ["boss-goblin-king", "boss-orc-warlord", "boss-ancient-dragon"];
+// Тесты по порядку: 20.11, 31.03, 03.04, а в конце года снова вождь орков и древний дракон.
+const BOSS_ORDER = ["boss-goblin-king", "boss-orc-warlord", "boss-ancient-dragon", "boss-orc-warlord", "boss-ancient-dragon"];
 
 // ---------- план ----------
 export const WEEKS = PLAN;
@@ -78,7 +84,7 @@ export function monsterFor(day) {
   const pool = dungeon(day.blockN).pool;
   const t = day.title.trim();
   let k = t.startsWith("А") ? 0 : t.startsWith("Б") ? 1 : 2;
-  if (day.blockN === 4 && k === 2) k = day.week % 2;   // в горах всего два дракона — чередуем
+  if (pool[2] === pool[0] && k === 2) k = day.week % 2;   // в горах всего два дракона — чередуем
   return MONSTERS[pool[k]];
 }
 export function isTavern(day) {
@@ -254,6 +260,11 @@ export function achievements(s) {
     A("boss1", "Цареубийца", "Победить Короля гоблинов (тест 20.11)", s.bossKills.includes("boss-goblin-king")),
     A("boss2", "Гроза орков", "Победить Вождя орков (тест 31.03)", s.bossKills.includes("boss-orc-warlord")),
     A("boss3", "Драконоборец", "Победить Древнего дракона (тест 03.04)", s.bossKills.includes("boss-ancient-dragon")),
+    A("d6", "Руины очищены", "80% монстров блока 6", dungeonCleared(6, s.logs)),
+    A("d7", "Вторая сессия", "Пережить летнюю сессию: 80% боёв блока 7", dungeonCleared(7, s.logs)),
+    A("d9", "Пик года", "80% монстров блока 9", dungeonCleared(9, s.logs)),
+    A("streak26", "Полгода в строю", "Серия 26 недель", s.streakBest >= 26),
+    A("bossAll", "Год побед", "Победить всех пятерых боссов тестов", s.bossKills.length >= 5),
     A("lvl5", "Закалённый", "Достичь 5 уровня", s.level >= 5),
     A("lvl10", "Живая легенда", "Достичь 10 уровня", s.level >= 10),
   ];

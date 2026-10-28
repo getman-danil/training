@@ -186,14 +186,14 @@ function exHTML(day, i, b) {
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
   return `<div class="ex ${done ? "done" : ""}" data-ex="${i}">
     <div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
-    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit}</div>
+    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit}</div>${it.hint ? `<div class="spec">${esc(it.hint)}</div>` : ""}
     <div class="sets">${cells}</div>
     <div class="fields"><input data-w="${i}" value="${esc(li ? li.weight : it.weight || "")}" placeholder="вес" aria-label="Вес"><input data-n="${i}" value="${esc(li?.note || "")}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
   </div>`;
 }
 function noteHTML(day, i) {
   const it = day.items[i], on = !!S.logs[day.date]?.items?.[i]?.done;
-  return `<button class="note-it ${on ? "on" : ""}" data-note="${i}"><span class="box">${on ? "✓" : ""}</span><span>${esc(it.text)}</span></button>`;
+  return `<button class="note-it ${on ? "on" : ""}" data-note="${i}"><span class="box">${on ? "✓" : ""}</span><span>${esc(it.text)}${it.hint ? `<br><small>${esc(it.hint)}</small>` : ""}</span></button>`;
 }
 
 function cardioHTML(day, L) {
