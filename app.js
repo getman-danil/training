@@ -151,7 +151,7 @@ function updateStage(animate, info) {
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
   const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
   const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${found}</small></div>`;
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
@@ -474,14 +474,14 @@ function barChart(wk) {
 // =====================================================================
 function renderHero() {
   const s = SUM;
-  let h = `<p class="lead">${esc(s.title)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}.</p>
+  let h = `<p class="lead">${esc(s.title)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}. Золото: <b class="gold">${s.gold}</b>.</p>
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
   ${buildHTML(s)}
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
-  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: у торговца на него покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
@@ -520,7 +520,7 @@ function buildHTML(s) {
   }
   h += `</div><h2 class="sec">ДРЕВО НАВЫКОВ</h2><p class="sub">Очков навыка: <b class="gold">${s.skillFree}</b> из ${s.skillPoints} (1 за уровень). Узел открывается, когда взяты те, что над ним. Из двух вершин — только одна.</p>
   <div class="ttabs">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}">${st.name}</button>`).join("")}</div>${treeHTML(s, treeTab)}`;
-  h += gearHTML(s);
+  h += gearHTML(s) + shopHTML(s);
   const can = G.canRespec(S.meta, todayISO());
   if (s.spent || s.skillSpent) h += can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ДРЕВО</button><p class="hint">Сброс — один раз за блок. Снаряжение не снимается, полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Вложенное сегодня можно вернуть.</p>`;
   return h;
@@ -537,7 +537,7 @@ function treeHTML(s, st) {
     return `<button class="node ${cls}" data-node="${n.id}" ${can || undo ? "" : "disabled"}><b>${esc(n.name)}</b><small>${esc(n.desc)}${fromGear ? " · от вещи" : ""}</small></button>`;
   }).join("")}</div>`).join("")}</div>`;
 }
-const RARITY = { common: "обычная", rare: "редкая", legendary: "легендарная" };
+const RARITY = { common: "обычная", rare: "редкая", legendary: "легендарная", mythic: "мифическая" };
 function gearHTML(s) {
   const eq = s.build.eq, inv = s.inventory;
   let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="slots">${G.SLOTS.map(sl => {
@@ -551,6 +551,52 @@ function gearHTML(s) {
   }).join("")}</ul>`;
   return h;
 }
+// ---------- торговец и кузница ----------
+let shopSlot = "weapon", shopStat = "str", forgeSel = [];
+function shopHTML(s) {
+  const b = s.build, gold = s.gold;
+  const pc = G.priceOf(G.PRICE_COMMON, b), fee = G.priceOf(G.FORGE_FEE, b), myth = G.priceOf(G.MYTHIC_COST, b);
+  const preview = G.itemOf(`s:${shopSlot}:${shopStat}:0`);
+  let h = `<h2 class="sec">ТОРГОВЕЦ</h2><p class="sub">Золото: <b class="gold">${gold}</b> · всего добыто ${s.goldEarned}. Золото дают только убийства.</p>
+  <div class="ttabs s4">${G.SLOTS.map(sl => `<button data-sslot="${sl.id}" aria-current="${shopSlot === sl.id}">${sl.name}</button>`).join("")}</div>
+  <div class="ttabs">${G.STATS.map(st => `<button data-sstat="${st.id}" aria-current="${shopStat === st.id}">${st.name}</button>`).join("")}</div>
+  <button class="act ${gold >= pc ? "gold" : ""}" id="buy" ${gold >= pc ? "" : "disabled"}>КУПИТЬ · ${pc} з.</button>
+  <p class="hint">${esc(preview.name)}: ${esc(G.itemText(preview))}. Торговец продаёт только обычные вещи.</p>`;
+  // Кузница: две обычные вещи одного слота + плата → редкая с их характеристиками (без узла).
+  const commons = s.inventory.filter(it => it.rarity === "common");
+  forgeSel = forgeSel.filter(id => commons.some(it => it.id === id));
+  h += `<h2 class="sec">КУЗНИЦА</h2><p class="sub">Выбери две обычные вещи одного слота — кузнец скуёт из них редкую с обеими характеристиками. Плата ${fee} з. Легендарную сковать нельзя.</p>`;
+  if (commons.length < 2) h += `<p class="hint">Нужно хотя бы две обычные вещи.</p>`;
+  else {
+    const selSlot = forgeSel.length && G.itemOf(forgeSel[0]).slot;
+    h += `<ul class="list inv forge">${commons.map(it => {
+      const on = forgeSel.includes(it.id), can = on || (forgeSel.length < 2 && (!selSlot || selSlot === it.slot));
+      return `<li class="${on ? "sel" : ""}"><span><b>${esc(it.name)}</b><small>${G.SLOTS.find(x => x.id === it.slot).name} · ${esc(G.itemText(it))}${b.eq[it.slot] === it.id ? " · надето" : ""}</small></span><button class="ghostbtn" data-fsel="${it.id}" ${can ? "" : "disabled"}>${on ? "убрать" : "в горн"}</button></li>`;
+    }).join("")}</ul>`;
+    if (forgeSel.length === 2) {
+      const out = G.itemOf(forgeId(forgeSel));
+      h += `<button class="act ${gold >= fee ? "gold" : ""}" id="forge" ${gold >= fee ? "" : "disabled"}>СКОВАТЬ · ${fee} з.</button><p class="hint">Выйдет: ${esc(out.name)}, ${esc(G.itemText(out))}.</p>`;
+    }
+  }
+  const legs = s.inventory.filter(it => it.rarity === "legendary");
+  h += `<p class="sub" style="margin-top:14px">Пробуждение: легендарная вещь становится мифической (+5 к характеристике, усиленный эффект). Только из своей легендарки, ${myth} з.</p>`;
+  h += legs.length ? `<ul class="list inv">${legs.map(it => { const M = G.itemOf("M:" + it.id); return `<li class="mythic"><span><b>${esc(it.name)} → ${esc(M.name)}</b><small>${esc(G.itemText(M))}</small></span><button class="ghostbtn" data-myth="${it.id}" ${gold >= myth ? "" : "disabled"}>пробудить</button></li>`; }).join("")}</ul>` : `<p class="hint">Легендарки пока нет — она падает только с боссов.</p>`;
+  return h;
+}
+function forgeId(ids) {
+  const [a, b] = ids.map(G.itemOf), n = (S.meta.shop?.log || []).length;
+  return `f:${a.slot}:${Object.keys(a.stats)[0]}:${Object.keys(b.stats)[0]}:${n}`;
+}
+// Запись в журнал лавки. Если израсходованная вещь была надета, на её место сразу надевается новая.
+function shopAct(act, id, use, cost) {
+  if (SUM.gold < cost) return;
+  const m = S.meta.shop ||= { log: [] };
+  m.log.push({ at: todayISO(), act, id, use, cost });
+  const eqNow = G.gearAt(S.meta, "9999-12-31"), slot = G.itemOf(id).slot;
+  if (use.some(u => eqNow[slot] === u)) { const [g] = todayEntry("gear", () => ({ eq: eqNow })); g.eq[slot] = id; }
+  saveHero();
+}
+
 // Что было вложено до сегодняшнего дня: сегодняшние изменения можно откатить без сброса. После сброса сегодня пол нулевой.
 function prevAlloc() {
   const log = S.meta.build?.log || [], last = log[log.length - 1];
@@ -588,6 +634,26 @@ main.addEventListener("click", e => {
     const [g] = todayEntry("gear", () => ({ eq: G.gearAt(S.meta, "9999-12-31") }));
     if (eq) g.eq[G.itemOf(eq.dataset.equip).slot] = eq.dataset.equip; else delete g.eq[uq.dataset.unequip];
     saveHero(); return;
+  }
+  const ss = e.target.closest("[data-sslot]"), sst = e.target.closest("[data-sstat]");
+  if (ss || sst) { if (ss) shopSlot = ss.dataset.sslot; else shopStat = sst.dataset.sstat; renderHero(); return; }
+  if (e.target.closest("#buy")) {
+    const cost = G.priceOf(G.PRICE_COMMON, SUM.build), it = G.itemOf(`s:${shopSlot}:${shopStat}:${(S.meta.shop?.log || []).length}`);
+    if (confirm(`Купить «${it.name}» за ${cost} золота?`)) { shopAct("buy", it.id, [], cost); toast(`Куплено: ${it.name}`); }
+    return;
+  }
+  const fs = e.target.closest("[data-fsel]");
+  if (fs) { const id = fs.dataset.fsel; forgeSel = forgeSel.includes(id) ? forgeSel.filter(x => x !== id) : [...forgeSel, id].slice(0, 2); renderHero(); return; }
+  if (e.target.closest("#forge") && forgeSel.length === 2) {
+    const id = forgeId(forgeSel), cost = G.priceOf(G.FORGE_FEE, SUM.build);
+    if (confirm(`Сковать «${G.itemOf(id).name}»? Две вещи уйдут в горн, плата ${cost} золота.`)) { const use = forgeSel; forgeSel = []; shopAct("forge", id, use, cost); toast(`Скована: ${G.itemOf(id).name}`); }
+    return;
+  }
+  const my = e.target.closest("[data-myth]");
+  if (my) {
+    const id = "M:" + my.dataset.myth, cost = G.priceOf(G.MYTHIC_COST, SUM.build);
+    if (confirm(`Пробудить легендарку за ${cost} золота? Она станет «${G.itemOf(id).name}».`)) { shopAct("mythic", id, [my.dataset.myth], cost); toast(`Пробуждена: ${G.itemOf(id).name}`); }
+    return;
   }
   if (e.target.closest("#respec")) {
     if (!confirm("Сбросить все очки характеристик и древо? В этом блоке сброс больше не будет доступен.")) return;
