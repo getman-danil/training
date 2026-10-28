@@ -112,7 +112,8 @@ function stageHTML(day) {
   const m = G.monsterFor(day);
   const cls = m.boss ? "boss" : m.tavern ? "tavern" : "";
   const art = m.tavern ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
-  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : m.id === "goblin-chief" ? "ВОЖАК" : "";
+  const rv = G.REVENGE[day.date];
+  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.id === "goblin-chief" ? "ВОЖАК" : "";
   return `<div class="stage ${cls}" id="stage">
     <div class="fog"></div>
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
@@ -145,9 +146,10 @@ function updateStage(animate, info) {
   art.classList.toggle("dead", b.killed);
   art.classList.toggle("fled", !b.killed && (!!L?.skipped || (!!L?.finished && b.dealt > 0)));
   const host = $("#bannerHost");
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : "ВРАГ ПОВЕРЖЕН"}<small>+${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
+  const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${SUM.perDay[day.date]?.xp || 0} опыта${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -251,7 +253,7 @@ function setRep(i, k, val) {
   const dmg = (after.dealt + after.over) - (before.dealt + before.over);
   refreshEx(i); refreshFinish();
   updateStage(true, { dmg, crit });
-  if (!before.killed && after.killed) { const m = G.monsterFor(day); toast(m.tavern ? "Спарринг выигран" : `${m.name} повержен!`); if (navigator.vibrate) navigator.vibrate([60, 60, 120]); }
+  if (!before.killed && after.killed) { const m = G.monsterFor(day); toast(m.tavern ? "Спарринг выигран" : G.REVENGE[day.date] ? `Реванш взят: ${m.name} повержен! +${G.XP_REVENGE} опыта` : `${m.name} повержен!`); if (navigator.vibrate) navigator.vibrate([60, 60, 120]); }
   if (crit) toast("Критический удар: личный рекорд!");
 }
 
@@ -472,6 +474,7 @@ function renderHero() {
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
+  <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
   main.innerHTML = h;

@@ -6,7 +6,8 @@ export const DMG = 30;              // урон за один плановый �
 export const MAX_SETS_HP = 5;       // упражнение с кучей подходов (EMOM на 20 минут) весит не больше пяти обычных
 export const OVERKILL_CAP = 0.2;    // перевыполнение даёт бонусный опыт не больше 20% здоровья
 export const XP_PER_HP = 0.25;      // опыт за урон: 4 единицы здоровья = 1 опыт
-export const XP_KILL = 100, XP_PR = 25, XP_CARDIO = 30, XP_TAVERN_BUFF = 50;
+export const XP_KILL = 100, XP_PR = 25, XP_CARDIO = 30, XP_TAVERN_BUFF = 50, XP_REVENGE = 50;
+export const REVENGE_WINDOW = 14;   // сбежавший монстр возвращается, если следующая тренировка не позже чем через 14 дней
 export const FREEZES = 3;           // ручных заморозок серии на весь план
 
 // ---------- монстры ----------
@@ -99,12 +100,40 @@ export function monsterFor(day) {
   if (BOSS_BY_DATE[day.date]) return MONSTERS[BOSS_BY_DATE[day.date]];
   if (MINIBOSS_BY_DATE[day.date]) return MONSTERS[MINIBOSS_BY_DATE[day.date]];
   if (isTavern(day)) return MONSTERS["tavern-keeper"];
+  if (REVENGE[day.date]) return MONSTERS[REVENGE[day.date].id];
+  return planMonster(day);
+}
+function planMonster(day) {
   const pool = dungeon(day.blockN).pool;
   const t = day.title.trim();
   let k = t.startsWith("А") ? 0 : t.startsWith("Б") ? 1 : 2;
   if (pool[2] === pool[0] && k === 2) k = day.week % 2;   // в горах всего два дракона — чередуем
   return MONSTERS[pool[k]];
 }
+// ---------- реванш ----------
+// Монстр, который сбежал раненым, приходит вместо монстра следующей обычной тренировки (не босс, не таверна,
+// не кардио и не «по желанию»). Возвращается один раз: если сбежит снова — ушёл насовсем.
+// Считается заново из записей, поэтому одинаково на всех устройствах. Ключ — дата дня в плане.
+export let REVENGE = {};
+function regular(d) { return !isCardio(d) && !isOptional(d) && !isTavern(d) && !BOSS_BY_DATE[d.date] && !MINIBOSS_BY_DATE[d.date]; }
+export function fledOn(day, log, today) {
+  if (!log || log.skipped) return false;
+  const b = battle(day, log);
+  return !b.killed && b.dealt > 0 && (!!log.finished || day.on < today);
+}
+export function computeRevenge(logs, today) {
+  REVENGE = {};
+  const days = DAYS.filter(d => !isCardio(d) && !isOptional(d)).sort((a, b) => a.on < b.on ? -1 : a.on > b.on ? 1 : 0);
+  days.forEach((d, k) => {
+    if (BOSS_BY_DATE[d.date] || isTavern(d) || !fledOn(d, logs[d.date], today)) return;
+    if (REVENGE[d.date]) return;                      // вернувшийся монстр сбежал снова — больше не придёт
+    const next = days.slice(k + 1).find(x => x.on > d.on);
+    if (!next || !regular(next) || daysBetween(d.on, next.on) > REVENGE_WINDOW || logs[next.date]?.skipped) return;
+    REVENGE[next.date] = { id: monsterFor(d).id, from: d.date };
+  });
+  return REVENGE;
+}
+
 export function isTavern(day) {
   if (BOSS_BY_DATE[day.date]) return false;
   return TAVERN_WEEKS.has(day.week) || /подводка/i.test(day.title);
@@ -242,6 +271,8 @@ export function streak(logs, meta, today) {
 // ---------- сводка героя ----------
 export function summarize(logs, meta, today) {
   const { prs, list: prList } = computePRs(logs);
+  computeRevenge(logs, today);
+  let revenges = 0;
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
   const killed = {}, bossKills = [], perDay = {};
   const tavernBuffWeeks = new Set();
@@ -254,7 +285,7 @@ export function summarize(logs, meta, today) {
     const b = battle(d, L), m = monsterFor(d);
     const nPR = Object.keys(prs[d.date] || {}).length;
     let dx = Math.round((b.dealt + b.overXp) * XP_PER_HP) + nPR * XP_PR;
-    if (b.killed) { dx += XP_KILL * (m?.boss ? 3 : 1); kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++; }
+    if (b.killed) { dx += XP_KILL * (m?.boss ? 3 : 1); kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++; if (REVENGE[d.date]) { dx += XP_REVENGE; revenges++; } }
     else if (L.finished && b.dealt > 0) fled++;
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF; }
@@ -263,13 +294,15 @@ export function summarize(logs, meta, today) {
   }
   const lv = levelFromXp(xp);
   const sk = streak(logs, meta, today);
-  const ach = achievements({ kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks });
-  return { xp, ...lv, kills, fled, cardio, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach };
+  const ach = achievements({ revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks });
+  return { xp, ...lv, revenges, kills, fled, cardio, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach };
 }
 
 function dungeonCleared(n, logs) {
   const ds = DAYS.filter(d => d.blockN === n && !isCardio(d) && !isOptional(d) && !isTavern(d) && !BOSS_BY_DATE[d.date]);
-  return ds.length > 0 && ds.filter(d => battle(d, logs[d.date]).killed).length >= Math.ceil(ds.length * 0.8);
+  // День засчитан, если монстр убит сразу или добит на реванше.
+  const avenged = new Set(Object.entries(REVENGE).filter(([date]) => battle(DAY_BY_DATE[date], logs[date]).killed).map(([, r]) => r.from));
+  return ds.length > 0 && ds.filter(d => battle(d, logs[d.date]).killed || avenged.has(d.date)).length >= Math.ceil(ds.length * 0.8);
 }
 
 export function achievements(s) {
@@ -280,6 +313,8 @@ export function achievements(s) {
     A("slayer", "Истребитель", "Убить 30 монстров", s.kills >= 30),
     A("crit", "Критический удар", "Поставить первый личный рекорд", s.prCount >= 1),
     A("crit10", "Мастер критов", "10 личных рекордов", s.prCount >= 10),
+    A("revenge", "Реванш", "Добить сбежавшего монстра, когда он вернётся", s.revenges >= 1),
+    A("revenge5", "Кровник", "Взять реванш 5 раз", s.revenges >= 5),
     A("overkill", "Перебор", "Перевыполнить тренировку на 20%", s.overkills >= 1),
     A("streak4", "Месяц без пропусков", "Серия 4 недели", s.streakBest >= 4),
     A("streak8", "Железная воля", "Серия 8 недель", s.streakBest >= 8),
