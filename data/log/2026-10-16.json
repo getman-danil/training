@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-16",
+  "week": 1,
+  "block": "Блок 1. Возвращение",
+  "title": "В — махи + объём",
+  "performedOn": "2026-10-16",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "ex",
+      "name": "Махи гирей двумя руками",
+      "plan": "5×10",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга в кольцах (кольца на уровне пояса, ноги согнуты)",
+      "plan": "3×10",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания от пола",
+      "plan": "3×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Выпады назад, гиря у груди",
+      "plan": "3×8 на ногу",
+      "planWeight": "8 кг",
+      "weight": "8 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Сгибания рук в кольцах + разгибания на трицепс в кольцах (суперсет)",
+      "plan": "3×10 + 3×10",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Скакалка — финишер",
+      "plan": "3×1 мин",
+      "planWeight": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Гоблин-шаман",
+    "hp": 600,
+    "dealt": 150,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1793200668904
+}
