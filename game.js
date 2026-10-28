@@ -302,6 +302,13 @@ export const STATS = [
 ];
 export const STAT_BY_ID = Object.fromEntries(STATS.map(s => [s.id, s]));
 export const FIND_XP = 80, FIND_CHANCE = 0.06, FIND_MAX = 0.6;
+// Шанс сверх потолка не сгорает: половина излишка — шанс, что находка редкая (не больше 30%).
+// Редкая находка: +2 к характеристикам, узел древа — только с шансом 12%. Легендарки с находок не падают.
+export const RARE_FIND_K = 0.5, RARE_FIND_MAX = 0.3, RARE_FIND_NODE = 0.12;
+export function rawFind(bd, luckBuff) {
+  return FIND_CHANCE * bd.stats.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + (hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0) + (luckBuff ? BUFFS.luck.val : 0) + (hasPerk(bd, "h-find") ? 0.03 : 0);
+}
+export function findChances(raw) { return { find: Math.min(FIND_MAX, raw), rare: Math.min(RARE_FIND_MAX, Math.max(0, raw - FIND_MAX) * RARE_FIND_K) }; }
 
 // Древо: у каждой характеристики своя ветка из 7 узлов.
 //        [малый 1]
@@ -407,19 +414,21 @@ export function itemOf(id) {
   const slot = src === "s" ? p[0] : pick(SLOTS, id + "#slot").id;
   const stat = src === "s" ? p[1] : pick(STATS, id + "#stat").id;
   if (src === "c" || src === "s") return { id, slot, rarity: "common", name: `${pick(ITEM_NAMES.common[slot], id + "#name")} ${STAT_BY_ID[stat].gen}`, stats: { [stat]: 1 }, nodes: [] };
-  if (src === "L" || hash01(id + "#leg") < LEGENDARY_CHANCE) {
+  if (src === "L" || (src === "b" && hash01(id + "#leg") < LEGENDARY_CHANCE)) {
     const L = LEGENDARY[slot];
     return { id, slot, rarity: "legendary", name: L.name, stats: { [stat]: 3 }, nodes: [L.fx], desc: L.desc };
   }
   const stat2 = pick(STATS.filter(s => s.id !== stat), id + "#stat2").id;
   const majors = Object.values(TREE).flat().filter(n => n.kind === "major");
   const node = pick(majors, id + "#node").id;
-  return { id, slot, rarity: "rare", name: pick(ITEM_NAMES.rare[slot], id + "#name"), stats: { [stat]: 1, [stat2]: 1 }, nodes: [node] };
+  // Редкая находка ("r:"): узел только с шансом, без узла — помечена как без узла.
+  const hasNode = src !== "r" || hash01(id + "#hasnode") < RARE_FIND_NODE;
+  return { id, slot, rarity: "rare", noNode: !hasNode, name: pick(ITEM_NAMES.rare[slot], id + "#name"), stats: { [stat]: 1, [stat2]: 1 }, nodes: hasNode ? [node] : [] };
 }
 export function itemText(it) {
   const parts = Object.entries(it.stats).map(([s, v]) => `+${v} ${STAT_BY_ID[s].name}`);
   for (const n of it.nodes) parts.push(NODE_BY_ID[n] ? `узел «${NODE_BY_ID[n].name}»` : UNIQUE_FX[n] || it.desc);
-  if (it.forged) parts.push("без узла");
+  if (it.forged || it.noNode) parts.push("без узла");
   return parts.join(", ");
 }
 
@@ -568,9 +577,9 @@ export function summarize(logs, meta, today) {
     }
     else if (L.finished && b.dealt > 0) fled++;
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
-    const findBonus = (hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0) + (on("luck", when) ? BUFFS.luck.val : 0) + (hasPerk(bd, "h-find") ? 0.03 : 0);
-    if (b.dealt > 0 && hash01(d.date) < Math.min(FIND_MAX, FIND_CHANCE * st.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + findBonus)) find = 1;
-    if (find) { finds++; dx += FIND_XP; loot.push({ id: "c:" + d.date, date: d.date }); }
+    const fc = findChances(rawFind(bd, on("luck", when)));
+    if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
+    if (find) { finds++; dx += FIND_XP; loot.push({ id: (hash01(d.date + "#rare") < fc.rare ? "r:" : "c:") + d.date, date: d.date }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1) * (hasPerk(bd, "u-tavern") ? 2 : 1); }
     let mul = hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1;
@@ -609,8 +618,9 @@ export function summarize(logs, meta, today) {
   for (const e of shop) loot.push({ id: e.id, date: e.at });
   const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
+  const findNow = findChances(rawFind(build, on("luck", today)));
   const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold };
+  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
   res.rewards = rewardList(res, meta);
   res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);
   res.honor = honorAt(meta, "9999-12-31");
