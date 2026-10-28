@@ -364,6 +364,21 @@ export const MYTHIC = {
   ring: { name: "Перстень рока", fx: "myth-find", desc: "+15% к шансу находки" },
 };
 
+// Уникальные вещи — награды за самые трудные достижения и титул «Легенда». Не падают, не покупаются, не куются
+// и не пробуждаются. +1 к характеристике и два особых эффекта: заметно лучше обычной, но слабее легендарки.
+export const UNIQUE = {
+  unbent: { slot: "ring", name: "Кольцо несгибаемого", stat: "wil", fx: ["u-kill", "u-patrol"] },
+  exam: { slot: "armor", name: "Мантия экзаменатора", stat: "end", fx: ["u-tavern", "u-week"] },
+  fang: { slot: "weapon", name: "Клык Древнего", stat: "str", fx: ["u-boss", "u-heavypr"] },
+  halfyear: { slot: "amulet", name: "Знак полугодия", stat: "lck", fx: ["u-gold", "u-inspire"] },
+  legend: { slot: "ring", name: "Перстень легенды", stat: "agi", fx: ["u-crit", "u-week"] },
+};
+export const UNIQUE_FX = {
+  "u-kill": "+8% опыта за убийство", "u-week": "первый бой недели +6% опыта", "u-tavern": "бодрость после таверны ×2",
+  "u-patrol": "+20% опыта за патрули", "u-boss": "+10% опыта за боссов", "u-heavypr": "рекорд с новым весом +8 опыта",
+  "u-gold": "+10% золота", "u-inspire": "Вдохновение +25% вместо +15%", "u-crit": "+8% опыта за криты",
+};
+
 // ---------- золото, торговец, кузница ----------
 // Золото дают только убийства, то есть только выполненный план. Перебор, рекорды и патрули золота не дают.
 // meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
@@ -380,6 +395,10 @@ export function itemOf(id) {
   if (src === "M") {
     const base = itemOf(id.slice(2)), My = MYTHIC[base.slot], stat = Object.keys(base.stats)[0];
     return { id, slot: base.slot, rarity: "mythic", name: My.name, stats: { [stat]: 5 }, nodes: [My.fx], desc: My.desc, from: base.id };
+  }
+  if (src === "U") {
+    const u = UNIQUE[p[0]];
+    return { id, slot: u.slot, rarity: "unique", name: u.name, stats: { [u.stat]: 1 }, nodes: u.fx, desc: u.fx.map(f => UNIQUE_FX[f]).join(", ") };
   }
   if (src === "f") {
     const stats = {}; for (const s of [p[1], p[2]]) stats[s] = (stats[s] || 0) + 1;
@@ -399,7 +418,7 @@ export function itemOf(id) {
 }
 export function itemText(it) {
   const parts = Object.entries(it.stats).map(([s, v]) => `+${v} ${STAT_BY_ID[s].name}`);
-  for (const n of it.nodes) parts.push(NODE_BY_ID[n] ? `узел «${NODE_BY_ID[n].name}»` : it.desc);
+  for (const n of it.nodes) parts.push(NODE_BY_ID[n] ? `узел «${NODE_BY_ID[n].name}»` : UNIQUE_FX[n] || it.desc);
   if (it.forged) parts.push("без узла");
   return parts.join(", ");
 }
@@ -411,6 +430,7 @@ export function allocAt(meta, iso) {
   const e = entryAt(meta?.build?.log, iso);
   return { stats: { ...ZERO(), ...(e?.stats || {}) }, nodes: (e?.nodes || []).filter(n => NODE_BY_ID[n]) };
 }
+export function honorAt(meta, iso) { const id = entryAt(meta?.honor?.log, iso)?.id; return HONOR[id] ? id : ""; }
 export function gearAt(meta, iso) { return { ...(entryAt(meta?.gear?.log, iso)?.eq || {}) }; }
 // Итоговый билд на дату: вложенные очки + малые узлы + снаряжение. nodes включает узлы и эффекты легендарных вещей.
 export function buildAt(meta, iso) {
@@ -418,6 +438,7 @@ export function buildAt(meta, iso) {
   const stats = { ...a.stats }, nodes = new Set(a.nodes);
   for (const id of Object.values(eq)) { if (!id) continue; const it = itemOf(id); for (const [s, v] of Object.entries(it.stats)) stats[s] += v; it.nodes.forEach(n => nodes.add(n)); }
   for (const n of nodes) if (NODE_BY_ID[n]?.kind === "small") stats[NODE_BY_ID[n].stat]++;
+  const h = honorAt(meta, iso); if (h) nodes.add(HONOR[h].fx);
   return { stats, nodes: [...nodes], alloc: a, eq };
 }
 export function currentBuild(meta) { return buildAt(meta, "9999-12-31"); }
@@ -496,13 +517,17 @@ export function summarize(logs, meta, today) {
   const loot = [];
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
   const killed = {}, bossKills = [], perDay = {};
-  const tavernBuffWeeks = new Set();
+  const tavernBuffWeeks = new Set(), weekFirst = new Set();
+  // Награды: заряды Вдохновения расходуются по одному на бой, изученные виды дают бонус с даты, когда их забрали.
+  const claims = claimsOf(meta);
+  const buffs = buffWindows(claims), on = (k, iso) => buffs[k].some(w => iso >= w.from && iso < w.to);
+  const studiedAt = (id, iso) => claims.some(e => e.id === "m:" + id && e.at <= iso);
   for (const d of DAYS) {
     const L = logs[d.date]; if (!L) continue;
     const bd = buildAt(meta, whenOf(d, L)), st = bd.stats;
     if (isCardio(d)) {
       if (L.items?.some(x => x.done) || L.finished) {
-        const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end) * (hasPerk(bd, "marathon") ? 1.75 : 1));
+        const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end + (hasPerk(bd, "u-patrol") ? 0.2 : 0) + (hasPerk(bd, "h-patrol") ? 0.3 : 0)) * (hasPerk(bd, "marathon") ? 1.75 : 1));
         xp += cx; cardio++; perDay[d.date] = { xp: cx };
       }
       continue;
@@ -514,7 +539,7 @@ export function summarize(logs, meta, today) {
     const heavyShare = allHp ? heavyHp / allHp : 0;
     const statMul = 1 + heavyShare * (0.095 * st.str + (hasPerk(bd, "breaker") ? 0.3 : 0)) + (1 - heavyShare) * 0.07 * st.end;
     let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
-    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) : 1;
+    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) * (hasPerk(bd, "u-boss") ? 1.1 : 1) * (hasPerk(bd, "h-boss") ? 1.25 : 1) : 1;
     const dayPRs = Object.entries(prs[d.date] || {});
     const nPR = dayPRs.length;
     dayPRs.forEach(([, pr], k) => {
@@ -522,31 +547,43 @@ export function summarize(logs, meta, today) {
       if (pr.kind === "kg" && hasPerk(bd, "titan")) x *= 1.6;
       if (k > 0 && hasPerk(bd, "combo")) x *= 1.12;
       if (hasPerk(bd, "blademaster")) x *= 1.18;
+      if (hasPerk(bd, "u-crit")) x *= 1.08;
+      if (hasPerk(bd, "h-crit")) x *= 1.04;
+      if (pr.kind === "kg" && hasPerk(bd, "u-heavypr")) x += 8;
       dx += Math.round(x);
     });
     let find = 0, dg = 0;
+    const when = whenOf(d, L);
     if (b.killed) {
       // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0));
+      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
       dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
-      let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0)) * (1 + 0.055 * st.wil);
+      let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
       if (nPR && hasPerk(bd, "precise")) kx += 30;
       dx += Math.round(kx * mod);
       kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++;
-      if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0); revenges++; }
+      if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0) + (hasPerk(bd, "h-revenge") ? 40 : 0); revenges++; }
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
       if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
     }
     else if (L.finished && b.dealt > 0) fled++;
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
-    const findBonus = hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0;
+    const findBonus = (hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0) + (on("luck", when) ? BUFFS.luck.val : 0) + (hasPerk(bd, "h-find") ? 0.03 : 0);
     if (b.dealt > 0 && hash01(d.date) < Math.min(FIND_MAX, FIND_CHANCE * st.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + findBonus)) find = 1;
     if (find) { finds++; dx += FIND_XP; loot.push({ id: "c:" + d.date, date: d.date }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
-    if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1); }
-    if (hasPerk(bd, "myth-xp")) dx = Math.round(dx * 1.08); else if (hasPerk(bd, "leg-xp")) dx = Math.round(dx * 1.05);
-    if (L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22) nightOwl++;
-    xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
+    if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1) * (hasPerk(bd, "u-tavern") ? 2 : 1); }
+    let mul = hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1;
+    if (b.dealt > 0 && !weekFirst.has(d.week)) { weekFirst.add(d.week); if (hasPerk(bd, "u-week")) mul += 0.06; }
+    const late = L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22;
+    if (late && hasPerk(bd, "h-night")) mul += 0.2;
+    if (hasPerk(bd, "h-year")) mul += 0.02;
+    if (m && studiedAt(m.id, when)) mul += STUDY;
+    const inspired = b.dealt > 0 && on("ins", when);
+    if (inspired) mul += hasPerk(bd, "u-inspire") ? INSPIRE_U : BUFFS.ins.val;
+    dx = Math.round(dx * mul);
+    if (late) nightOwl++;
+    xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
   // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
   for (const w of WEEKS) {
@@ -559,6 +596,8 @@ export function summarize(logs, meta, today) {
     const last = DAYS.filter(d => d.blockN === n).pop();
     if (hasPerk(buildAt(meta, last.on), "veteran") && dungeonCleared(n, logs)) xp += 250;
   }
+  // Золото и опыт из наград начисляются целиком; уникальные вещи попадают в сумку с даты, когда их забрали.
+  for (const e of claims) { const r = rewardOf(e.id); xp += r.xp; gold += r.gold; if (r.item) loot.push({ id: "U:" + r.item, date: e.at }); }
   const lv = levelFromXp(xp);
   const sk = streak(logs, meta, today);
   const points = lv.level - 1 + bossKills.length, skillPoints = lv.level - 1;
@@ -571,7 +610,15 @@ export function summarize(logs, meta, today) {
   const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  return { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold };
+  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold };
+  res.rewards = rewardList(res, meta);
+  res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);
+  res.honor = honorAt(meta, "9999-12-31");
+  res.shownTitle = res.honor ? HONOR[res.honor].name : res.title;
+  res.unclaimed = res.rewards.filter(r => r.open && !r.at).length;
+  // Активные бафы на сегодня: сколько дней осталось (включая сегодня).
+  res.buffs = Object.keys(BUFFS).map(k => { const w = buffs[k].find(x => today >= x.from && today < x.to) || buffs[k].find(x => x.from > today); return w && { id: k, ...BUFFS[k], left: daysBetween(today, w.to), from: w.from }; }).filter(Boolean);
+  return res;
 }
 
 function dungeonCleared(n, logs) {
@@ -617,5 +664,97 @@ export function achievements(s) {
     A("buy1", "Покупатель", "Купить вещь у торговца", s.bought >= 1),
     A("forge1", "Кузнец", "Сковать редкую вещь", s.forged >= 1),
     A("mythic", "Миф", "Пробудить легендарную вещь до мифической", s.mythics >= 1),
+    A("beasts", "Знаток тварей", "Убить хотя бы по разу всех 12 обычных монстров", Object.values(MONSTERS).filter(m => !m.boss && !m.tavern && m.id in s.killed).length >= 12),
+  ];
+}
+
+// ---------- награды за достижения, титулы и бестиарий ----------
+// Открыл достижение, новый титул или нового монстра — в Летописи появляется награда, её надо забрать.
+// meta.rewards = { log: [{ at: "<дата>", id: "a:<достижение>" | "t:<номер титула>" | "m:<монстр>" }] }
+// Всё, что даёт награда, действует с даты, когда её забрали, поэтому старые достижения тоже не пропадают.
+// Бафы на дни: действуют N дней с даты, когда награду забрали; тот же баф ещё раз — продлевает срок, а не складывает проценты.
+// Бестиарий: изученный вид (забрана награда за первое убийство) даёт +2% опыта за каждый бой с ним.
+// Цена в общей валюте: день Вдохновения ≈ 13 опыта, 10 золота ≈ 1/5 обычной вещи. Награды за идеальный год ≈ +4% опыта и ≈ +16% золота; почётный титул ≈ 300–500 опыта в год.
+export const BUFFS = {
+  ins: { name: "Вдохновение", val: 0.15, desc: "+15% опыта за бои" },
+  gold: { name: "Золотая лихорадка", val: 0.3, desc: "+30% золота за убийства" },
+  luck: { name: "Счастливый след", val: 0.08, desc: "+8% к шансу находки" },
+};
+export const INSPIRE_U = 0.25, STUDY = 0.02;
+// gold, xp — сразу; ins/gb/lk — дни бафа; item — уникальная вещь.
+const R = (o = {}) => ({ gold: 0, xp: 0, ins: 0, gb: 0, lk: 0, item: null, honor: null, ...o });
+export const ACH_REWARDS = {
+  "first-blood": R({ gold: 10, ins: 3 }), hunter: R({ gb: 7 }), slayer: R({ gold: 20, lk: 7 }),
+  crit: R({ xp: 30, ins: 3 }), crit10: R({ xp: 50, ins: 5 }),
+  revenge: R({ gold: 10 }), revenge5: R({ gold: 20, ins: 5 }), overkill: R({ ins: 3 }), night: R({ lk: 5 }),
+  streak4: R({ gold: 15, ins: 5 }), streak8: R({ ins: 7, gb: 7 }), streak16: R({ item: "unbent" }), streak26: R({ item: "halfyear" }),
+  cardio10: R({ gold: 10, lk: 5 }),
+  d1: R({ gold: 20, gb: 5 }), d2: R({ item: "exam" }), d3: R({ gold: 20, ins: 5 }), d4: R({ ins: 7, lk: 7 }), d6: R({ gold: 20, ins: 7 }), d7: R({ ins: 7, gb: 7 }), d9: R({ gold: 20, ins: 10 }),
+  boss1: R({ ins: 7 }), boss2: R({ ins: 7, gb: 5 }), boss3: R({ item: "fang" }), bossAll: R({ gold: 50, ins: 14 }),
+  lvl5: R({ gold: 10, ins: 3 }), lvl10: R({ ins: 7 }), perk1: R({ ins: 3 }), legend: R({ gold: 20 }), find5: R({ gb: 7 }),
+  buy1: R({ gold: 10 }), forge1: R({ gold: 10 }), mythic: R({ ins: 14 }), beasts: R({ gold: 20, lk: 7 }),
+};
+// Награда за титул: индекс в TITLES (0 — «Странник», его не дают).
+export const TITLE_REWARDS = [null, R({ gold: 10, ins: 3 }), R({ ins: 5 }), R({ gold: 15, lk: 5 }), R({ ins: 5, gb: 5 }), R({ xp: 100, ins: 5 }),
+  R({ gold: 20, ins: 7 }), R({ xp: 120, gb: 7 }), R({ gold: 25, ins: 10 }), R({ ins: 7, item: "legend" })];
+// Почётные титулы: у этих достижений наградой служит сам титул. Носится один; эффект действует, пока он надет.
+// meta.honor = { log: [{ at: "<дата>", id: "<достижение>" | "" }] } — "" значит титул уровня.
+export const HONOR = {
+  slayer: { name: "Истребитель", fx: "h-slayer", desc: "+4% опыта за убийство" },
+  crit10: { name: "Мастер критов", fx: "h-crit", desc: "+4% опыта за криты" },
+  revenge5: { name: "Кровник", fx: "h-revenge", desc: "реванш +40 опыта" },
+  cardio10: { name: "Гонец", fx: "h-patrol", desc: "+30% опыта за патрули" },
+  night: { name: "Полуночник", fx: "h-night", desc: "бой, законченный после 22:00, +20% опыта" },
+  boss1: { name: "Цареубийца", fx: "h-boss", desc: "+25% опыта за боссов" },
+  find5: { name: "Мародёр", fx: "h-find", desc: "+3% к шансу находки" },
+  bossAll: { name: "Победитель года", fx: "h-year", desc: "+2% всего опыта за бои" },
+};
+for (const id of Object.keys(HONOR)) ACH_REWARDS[id] = R({ honor: id });
+const STUDY_REWARD = R();   // за вид — только знание (+2% в боях с ним)
+// Отрезки действия бафов: каждая награда начинает свой отрезок с даты получения или с конца предыдущего, если он ещё идёт.
+function buffWindows(claims) {
+  const out = { ins: [], gold: [], luck: [] }, key = { ins: "ins", gold: "gb", luck: "lk" };
+  for (const k of Object.keys(out)) {
+    let end = "";
+    for (const e of [...claims].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))) {
+      const n = rewardOf(e.id)[key[k]]; if (!n) continue;
+      const from = e.at > end ? e.at : end; end = addDays(from, n);
+      const last = out[k][out[k].length - 1];
+      if (last && last.to === from) last.to = end; else out[k].push({ from, to: end });
+    }
+  }
+  return out;
+}
+
+export function rewardOf(id) {
+  const [k, key] = [id.slice(0, 1), id.slice(2)];
+  if (k === "a" && ACH_REWARDS[key]) return ACH_REWARDS[key];
+  if (k === "t" && TITLE_REWARDS[+key]) return TITLE_REWARDS[+key];
+  if (k === "m" && MONSTERS[key] && !MONSTERS[key].tavern) return STUDY_REWARD;
+  return null;
+}
+export function rewardText(r, id = "") {
+  const parts = [];
+  if (r.honor) parts.push(`титул «${HONOR[r.honor].name}» (${HONOR[r.honor].desc}, пока надет)`);
+  if (r.item) { const u = UNIQUE[r.item]; parts.push(`уникальная вещь «${u.name}»`); }
+  if (r.gold) parts.push(`${r.gold} з.`);
+  const days = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "день" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "дня" : "дней"}`;
+  if (r.ins) parts.push(`Вдохновение на ${days(r.ins)}`);
+  if (r.gb) parts.push(`Золотая лихорадка на ${days(r.gb)}`);
+  if (r.lk) parts.push(`Счастливый след на ${days(r.lk)}`);
+  if (r.xp) parts.push(`${r.xp} опыта`);
+  if (id.startsWith("m:")) parts.push(`+${Math.round(STUDY * 100)}% опыта в боях с ним`);
+  return parts.join(", ");
+}
+export function claimsOf(meta) { return (meta?.rewards?.log || []).filter(e => rewardOf(e.id)); }
+// Что уже можно забрать: открытые достижения, достигнутые титулы, убитые виды. Забранное помечено датой.
+function rewardList(s, meta) {
+  const at = Object.fromEntries(claimsOf(meta).map(e => [e.id, e.at]));
+  const row = (id, kind, name, open) => ({ id, kind, name, open: !!open, at: at[id] || null, reward: rewardOf(id), text: rewardText(rewardOf(id), id) });
+  const tIdx = TITLES.indexOf(s.title);
+  return [
+    ...s.achievements.filter(a => ACH_REWARDS[a.id]).map(a => row("a:" + a.id, "ach", a.name, a.got)),
+    ...TITLES.map((t, i) => i && row("t:" + i, "title", t, i <= tIdx)).filter(Boolean),
+    ...Object.values(MONSTERS).filter(m => !m.tavern).map(m => row("m:" + m.id, "beast", m.name, s.killed[m.id])),
   ];
 }
