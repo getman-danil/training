@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "Кардио",
   "performedOn": "2026-10-17",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-28T15:21:26.183Z",
   "dayNote": "",
   "items": [
     {
@@ -18,5 +18,5 @@
   "game": {
     "patrol": true
   },
-  "updatedAt": 1793200874708
+  "updatedAt": 1793200886183
 }
