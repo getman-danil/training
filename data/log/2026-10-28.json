@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-28",
+  "week": 3,
+  "block": "Блок 1. Возвращение",
+  "title": "Б — жим + одна нога",
+  "performedOn": "2026-10-28",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "ex",
+      "name": "Отжимания на брусьях (основные)",
+      "plan": "5×6",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [
+        null,
+        null,
+        null
+      ],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Болгарские сплит-приседы (задняя нога на стуле)",
+      "plan": "3×10 на ногу",
+      "planWeight": "8 кг",
+      "weight": "8 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Подтягивания обратным хватом",
+      "plan": "3×10",
+      "planWeight": "резинка 15–25",
+      "weight": "резинка 15–25",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Жим гири стоя одной рукой",
+      "plan": "3×7 на руку",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Румынская тяга с гирями",
+      "plan": "4×10",
+      "planWeight": "24 кг двумя руками",
+      "weight": "24 кг двумя руками",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Планка",
+      "plan": "3×45 с",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Гоблин-лучник",
+    "hp": 630,
+    "dealt": 0,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1793199929713
+}
