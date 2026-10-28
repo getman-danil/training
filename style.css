@@ -215,3 +215,8 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .sheethead .ghostbtn{flex:0 0 auto;height:36px;padding:0 12px;border:1px solid var(--line2);font-family:var(--caps);letter-spacing:.12em;font-size:14px}
 .step .okbtn{width:64px;height:60px;border:1px solid var(--gold);color:var(--gold);font-size:26px}
 .step button{width:56px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pad button{height:54px;border:1px solid var(--line);background:var(--ink);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.pad button:active{background:rgba(201,162,74,.15);border-color:var(--gold)}
+.step input{caret-color:transparent}
+.pad button,.step input,.set{font-variant-numeric:lining-nums tabular-nums}

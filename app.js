@@ -322,21 +322,44 @@ function openSheet(i, k, el) {
   const val = reps[k] ?? reps[k - 1] ?? pp.target ?? "";
   sheetAt = { i, k };
   $("#sheetTitle").textContent = `${it.name} · подход ${k + 1}${pp.target ? " · план " + pp.target : ""} ${pp.unit !== "повт" ? pp.unit : ""}`;
-  sv.value = val; sheet.hidden = false;
+  sv.value = val; fresh = true; sheet.hidden = false;
   main.querySelectorAll(".set.sel").forEach(c => c.classList.remove("sel"));
   el?.classList.add("sel");
-  setTimeout(() => { sv.focus(); sv.select(); }, 50);
+
 }
 function closeSheet() { sheet.hidden = true; sheetAt = null; main.querySelectorAll(".set.sel").forEach(c => c.classList.remove("sel")); }
-$("#minus").onclick = () => { sv.value = Math.max(0, (parseFloat(sv.value) || 0) - 1); };
-$("#plus").onclick = () => { sv.value = (parseFloat(sv.value) || 0) + 1; };
+// Первая нажатая цифра заменяет подставленное значение, следующие дописываются.
+let fresh = true;
+function padKey(k) {
+  let v = fresh ? "" : String(sv.value);
+  fresh = false;
+  if (k === "del") v = String(sv.value).slice(0, -1);
+  else if (k === ",") v = (v || "0").includes(",") ? v : (v || "0") + ",";
+  else v = (v === "0" ? "" : v) + k;
+  sv.value = v.slice(0, 5);
+}
+// Тап мимо окна ввода (не по клетке подхода) закрывает его без сохранения.
+document.addEventListener("pointerdown", e => { if (!sheet.hidden && !sheet.contains(e.target) && !e.target.closest("[data-set],[data-add]")) closeSheet(); }, true);
+$("#pad").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (b) padKey(b.dataset.k); });
+document.addEventListener("keydown", e => {
+  if (sheet.hidden) return;
+  if (/^[0-9]$/.test(e.key)) padKey(e.key);
+  else if (e.key === "," || e.key === ".") padKey(",");
+  else if (e.key === "Backspace") padKey("del");
+  else if (e.key === "Enter") $("#sheetOk").click();
+  else if (e.key === "Escape") closeSheet();
+  else return;
+  e.preventDefault();
+});
+const num = () => parseFloat(String(sv.value).replace(",", ".")) || 0;
+$("#minus").onclick = () => { sv.value = String(Math.max(0, num() - 1)).replace(".", ","); fresh = false; };
+$("#plus").onclick = () => { sv.value = String(num() + 1).replace(".", ","); fresh = false; };
 $("#sheetClear").onclick = () => { if (sheetAt) { const { i, k } = sheetAt; closeSheet(); setRep(i, k, null); } };
 $("#sheetOk").onclick = () => {
   if (!sheetAt) return;
   const { i, k } = sheetAt, v = parseFloat(String(sv.value).replace(",", "."));
   closeSheet(); setRep(i, k, v > 0 ? v : null);
 };
-sv.addEventListener("keydown", e => { if (e.key === "Enter") $("#sheetOk").click(); if (e.key === "Escape") closeSheet(); });
 
 // =====================================================================
 // ПОХОД

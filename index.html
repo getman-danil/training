@@ -28,13 +28,19 @@
 </nav>
 <div class="sheet" id="sheet" hidden>
   <div class="in">
-    <!-- Кнопки над полем и рядом с ним: открытая клавиатура телефона закрывает всё, что ниже поля. -->
+    <!-- Своя цифровая клавиатура: системная не открывается, и полоска автозаполнения Chrome не мешает. -->
     <div class="sheethead"><div class="t" id="sheetTitle"></div><button class="ghostbtn" id="sheetClear">Стереть</button></div>
     <div class="step">
       <button id="minus" aria-label="Минус один">−</button>
-      <input id="sheetVal" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="Повторы">
+      <input id="sheetVal" inputmode="none" readonly autocomplete="off" aria-label="Повторы">
       <button id="plus" aria-label="Плюс один">+</button>
       <button class="okbtn" id="sheetOk" aria-label="Готово">✓</button>
+    </div>
+    <div class="pad" id="pad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k=",">,</button><button data-k="0">0</button><button data-k="del" aria-label="Стереть цифру">⌫</button>
     </div>
   </div>
 </div>
