@@ -28,15 +28,13 @@
 </nav>
 <div class="sheet" id="sheet" hidden>
   <div class="in">
-    <div class="t" id="sheetTitle"></div>
+    <!-- Кнопки над полем и рядом с ним: открытая клавиатура телефона закрывает всё, что ниже поля. -->
+    <div class="sheethead"><div class="t" id="sheetTitle"></div><button class="ghostbtn" id="sheetClear">Стереть</button></div>
     <div class="step">
       <button id="minus" aria-label="Минус один">−</button>
-      <input id="sheetVal" inputmode="decimal" autocomplete="off" aria-label="Повторы">
+      <input id="sheetVal" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="Повторы">
       <button id="plus" aria-label="Плюс один">+</button>
-    </div>
-    <div class="row2">
-      <button class="ghostbtn" id="sheetClear">Стереть</button>
-      <button class="okbtn" id="sheetOk">Готово</button>
+      <button class="okbtn" id="sheetOk" aria-label="Готово">✓</button>
     </div>
   </div>
 </div>
