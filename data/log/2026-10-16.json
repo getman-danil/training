@@ -60,7 +60,7 @@
         8,
         8
       ],
-      "note": ""
+      "note": "2 минуты отдых"
     },
     {
       "type": "ex",
@@ -68,7 +68,9 @@
       "plan": "3×10 + 3×10",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        null
+      ],
       "note": ""
     },
     {
@@ -89,5 +91,5 @@
     "overkill": 45,
     "killed": false
   },
-  "updatedAt": 1793200720586
+  "updatedAt": 1793200744698
 }
