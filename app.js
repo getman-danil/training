@@ -205,14 +205,16 @@ function exHTML(day, i, b) {
   const pp = G.parsePlan(it), reps = li?.reps || [];
   const prs = SUM.prs[day.date] || {};
   const n = Math.max(pp.sets, reps.length);
+  const exb = b.exs.find(e => e.i === i);
+  // С другим весом в пустой клетке показываем, сколько повторов нужно для полного урона.
+  const need = pp.target && exb ? Math.ceil(pp.target / exb.lf - 1e-9) : pp.target;
   let cells = "";
   for (let k = 0; k < n; k++) {
     const r = reps[k], has = r != null && r !== "" && +r > 0;
-    const cls = ["set", has ? "d" : "", has && pp.target && +r < pp.target ? "lo" : "", prs[i + ":" + k] ? "pr" : "", k >= pp.sets ? "extra" : ""].join(" ");
-    cells += `<button class="${cls}" data-set="${i}:${k}"><small>${k + 1}</small>${has ? r : pp.target ? `<span class="g">${pp.target}</span>` : '<span class="g">·</span>'}</button>`;
+    const cls = ["set", has ? "d" : "", has && need && +r < need ? "lo" : "", prs[i + ":" + k] ? "pr" : "", k >= pp.sets ? "extra" : ""].join(" ");
+    cells += `<button class="${cls}" data-set="${i}:${k}"><small>${k + 1}</small>${has ? r : need ? `<span class="g">${need}</span>` : '<span class="g">·</span>'}</button>`;
   }
   cells += `<button class="set add" data-add="${i}" aria-label="Добавить подход">+</button>`;
-  const exb = b.exs.find(e => e.i === i);
   const done = exb && exb.dealt >= exb.hp - 0.5;
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
   return `<div class="ex ${done ? "done" : ""}" data-ex="${i}">
@@ -220,6 +222,7 @@ function exHTML(day, i, b) {
     <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit}</div>${it.hint ? `<div class="spec">${esc(it.hint)}</div>` : ""}
     <div class="sets">${cells}</div>
     <div class="fields"><input data-w="${i}" value="${esc(li ? li.weight : it.weight || "")}" placeholder="вес" aria-label="Вес"><input data-n="${i}" value="${esc(li?.note || "")}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
+    ${exb && Math.abs(exb.lf - 1) > 0.005 ? `<div class="spec lf">вес не как в плане · урон за повтор ×${exb.lf.toFixed(2).replace(".", ",")}</div>` : ""}
   </div>`;
 }
 function noteHTML(day, i) {
@@ -274,7 +277,7 @@ main.addEventListener("click", e => {
     const [i, k] = s.dataset.set.split(":").map(Number);
     const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
     const r = S.logs[day.date]?.items?.[i]?.reps?.[k];
-    if ((r == null || r === "") && pp.target) setRep(i, k, pp.target);
+    if ((r == null || r === "") && pp.target) setRep(i, k, Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9));
     else openSheet(i, k, s);
     return;
   }
@@ -318,7 +321,7 @@ main.addEventListener("change", e => {
     const day = cur.day, L = getLog(day, true), i = +(t.dataset.w ?? t.dataset.n);
     if (t.dataset.w != null) L.items[i].weight = t.value.trim(); else L.items[i].note = t.value.trim();
     commit(day, L);
-    if (t.dataset.w != null) refreshEx(i);
+    if (t.dataset.w != null) setTimeout(() => { if (cur?.day === day) { refreshEx(i); updateStage(false); refreshFinish(); } });
   }
   if (t.id === "performedOn" && cur && t.value) { const L = getLog(cur.day, true); L.performedOn = t.value; commit(cur.day, L); }
   if (t.id === "dayNote" && cur) { const L = getLog(cur.day, true); L.dayNote = t.value; commit(cur.day, L); }
@@ -330,7 +333,8 @@ let sheetAt = null;
 function openSheet(i, k, el) {
   const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
   const reps = S.logs[day.date]?.items?.[i]?.reps || [];
-  const val = reps[k] ?? reps[k - 1] ?? pp.target ?? "";
+  const need = pp.target && Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9);
+  const val = reps[k] ?? reps[k - 1] ?? need ?? "";
   sheetAt = { i, k };
   $("#sheetTitle").textContent = `${it.name} · подход ${k + 1}${pp.target ? " · план " + pp.target : ""} ${pp.unit !== "повт" ? pp.unit : ""}`;
   sv.value = val; fresh = true; sheet.hidden = false;
@@ -486,6 +490,7 @@ function renderHero() {
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
   <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
+  <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
@@ -604,6 +609,9 @@ function renderSettings() {
   <li>Repository access → <b>Only select repositories</b> → <code>training</code>.</li>
   <li>Permissions → Repository → <b>Contents: Read and write</b>. Срок — какой удобно (например, год).</li>
   <li>Скопируй токен и вставь сюда. Он хранится только в этом браузере и никуда, кроме GitHub, не отправляется.</li></ol></div>
+  <h2 class="sec">ГЕРОЙ</h2>
+  <div class="set-form"><label>Вес тела, кг<input id="cfgBw" inputmode="decimal" value="${esc(S.meta.bodyweight || "")}" placeholder="96"></label></div>
+  <p class="help">Нужен, чтобы честно пересчитывать урон в упражнениях со своим весом: убрал резинку или повесил гирю — каждый повтор стоит больше. Пока не указан, считается 96 кг.</p>
   <h2 class="sec">РЕЗЕРВНАЯ КОПИЯ</h2>
   <div class="set-form"><button class="act" id="exp">СКАЧАТЬ JSON</button>
   <label>Загрузить из файла<input type="file" id="imp" accept="application/json"></label></div>
@@ -617,6 +625,7 @@ function renderSettings() {
     const ok = await runSync(); recompute(); renderTop();
     if (ok) toast("Связь с GitHub есть");
   };
+  $("#cfgBw").onchange = e => { const v = e.target.value.trim().replace(",", "."); S.meta.bodyweight = v ? +v || null : null; touchMeta(); recompute(); renderTop(); toast("Вес тела сохранён"); };
   $("#exp").onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([exportAll()], { type: "application/json" }));

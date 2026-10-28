@@ -199,17 +199,18 @@ export function battle(day, log) {
     const pp = parsePlan(it);
     const reps = (log?.items?.[i]?.reps || []);
     const exHp = DMG * Math.min(pp.sets, MAX_SETS_HP) * mult, per = exHp / pp.sets;
+    const lf = loadFactor(it, log?.items?.[i]);
     let d = 0, o = 0;
     reps.forEach((r, k) => {
       if (r == null || r === "") return;
       r = +r; if (!(r > 0)) return;
       setsDone++;
-      const frac = pp.target ? r / pp.target : 1;
+      const frac = pp.target ? r * lf / pp.target : lf;
       if (k < pp.sets) { d += per * Math.min(frac, 1); o += per * Math.max(frac - 1, 0); }
       else o += per * frac;
     });
     hp += exHp; dealt += d; over += o;
-    exs.push({ i, pp, per, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
+    exs.push({ i, pp, per, lf, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
   });
   hp = Math.round(hp); dealt = Math.round(dealt); over = Math.round(over);
   const killed = hp > 0 && dealt >= hp - 0.5;
@@ -224,10 +225,27 @@ export function normName(n) {
 }
 // Вес в кг для сравнения: «24 + 16» = 40, «+8 кг» = 8, «свой вес» = 0, резинка помогает — поэтому со знаком минус.
 export function kg(w) {
-  w = String(w || "").toLowerCase();
+  // «+20 кг (16+4)» — в скобках расшифровка, её не складываем; «махи 24–32 кг» — берём первое число.
+  w = String(w || "").toLowerCase().replace(/\(.*?\)/g, "");
   const nums = w.split("+").map(p => /(\d+(?:[.,]\d+)?)/.exec(p)).filter(Boolean).map(m => parseFloat(m[1].replace(",", ".")));
   const sum = nums.reduce((a, b) => a + b, 0);
   return /резин/.test(w) ? -sum : sum;
+}
+
+// ---------- пересчёт урона под фактический вес ----------
+// Повтор с другим весом стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела
+// + отягощение − помощь резинки: убрал резинку 15 кг при весе 96 — каждый повтор весит 96/81 ≈ 1,19 планового.
+export let BODYWEIGHT = 96;
+export function setBodyweight(v) { v = parseFloat(String(v || "").replace(",", ".")); BODYWEIGHT = v >= 30 && v <= 250 ? v : 96; }
+const bodyBased = w => /свой вес|резин/.test(w) || /^\s*\+/.test(w);
+export function loadFactor(it, li) {
+  const pw = String(it.weight || "").toLowerCase(), aw = String(li?.weight ?? it.weight ?? "").toLowerCase();
+  if (!aw.trim() || aw.trim() === pw.trim()) return 1;
+  let p, a;
+  if (bodyBased(pw)) { p = BODYWEIGHT + kg(pw); a = BODYWEIGHT + (/свой вес/.test(aw) && !/\d/.test(aw) ? 0 : kg(aw)); }
+  else { p = kg(pw); a = kg(aw); }
+  if (!(p > 0) || !(a > 0)) return 1;
+  return Math.min(Math.max(a / p, 0.25), 3);
 }
 
 // Проходит по журналу в хронологическом порядке и отмечает подходы-рекорды.
@@ -446,6 +464,7 @@ export function streak(logs, meta, today) {
 
 // ---------- сводка героя ----------
 export function summarize(logs, meta, today) {
+  setBodyweight(meta?.bodyweight);
   const { prs, list: prList } = computePRs(logs);
   computeRevenge(logs, today, meta);
   let revenges = 0, finds = 0;

@@ -271,3 +271,5 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .legendary b,.banner .legendary{color:#ff8a3a}
 .slot.legendary{border-color:#8a4a1c;box-shadow:0 0 12px rgba(255,106,26,.15)}
 .inv li .ghostbtn{align-self:center;flex:0 0 auto}
+
+.spec.lf{color:var(--gold);margin-top:6px}
