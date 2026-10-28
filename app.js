@@ -33,17 +33,19 @@ function commit(day, L) {
   L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed } : { patrol: true };
   // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
   if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.on < todayISO() ? day.on : todayISO();
-  const before = SUM?.level;
+  const before = SUM?.level, rw = SUM?.unclaimed;
   touchLog(L);
   recompute(); renderTop();
   if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
+  else if (rw != null && SUM.unclaimed > rw) toast("Новая награда — забери её в Летописи");
 }
 
 // ---------- верхняя панель ----------
 function renderTop() {
   $("#lvl").textContent = SUM.level;
   $("#lvlBtn").classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
-  $("#xpTxt").textContent = `${SUM.title} · ${SUM.into} / ${SUM.need}`;
+  document.querySelector('.tabs [data-tab="chronicle"]').classList.toggle("pts", SUM.unclaimed > 0);
+  $("#xpTxt").textContent = `${SUM.shownTitle} · ${SUM.into} / ${SUM.need}`;
   $("#xpBar").style.width = (SUM.into / SUM.need * 100).toFixed(1) + "%";
 }
 function renderSync() {
@@ -151,7 +153,7 @@ function updateStage(animate, info) {
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
   const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
   const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
@@ -474,7 +476,7 @@ function barChart(wk) {
 // =====================================================================
 function renderHero() {
   const s = SUM;
-  let h = `<p class="lead">${esc(s.title)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}. Золото: <b class="gold">${s.gold}</b>.</p>
+  let h = `<p class="lead">${esc(s.shownTitle)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}. Золото: <b class="gold">${s.gold}</b>.${buffsText(s)}${s.unclaimed ? ` <a href="#/chronicle" class="gold">Награды ждут в Летописи: ${s.unclaimed}</a>.` : ""}</p>
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
   ${buildHTML(s)}
@@ -485,7 +487,8 @@ function renderHero() {
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
-  <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
+  <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p>
+  <p>За достижения, новые титулы и первое убийство каждого вида монстров дают награды — их забирают в Летописи. Бафы действуют несколько дней с того дня, как награду забрали: ${Object.values(G.BUFFS).map(b => `${b.name} — ${b.desc}`).join(", ")}. Тот же баф ещё раз продлевает срок. Часть достижений вместо награды даёт почётный титул: его эффект работает, пока титул надет, носить можно один. Изученный вид монстров даёт +${Math.round(G.STUDY * 100)}% опыта в боях с ним. За самые трудные достижения и титул «Легенда» — уникальные вещи: +1 к характеристике и два особых эффекта. Всё действует с того дня, как награду забрали.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
   main.innerHTML = h;
 }
@@ -494,19 +497,56 @@ function renderHero() {
 // ЛЕТОПИСЬ: достижения, бестиарий, титулы
 // =====================================================================
 function renderChronicle() {
-  const s = SUM;
-  let h = `<p class="lead">Летопись</p><p class="sub">Достижений: ${s.achievements.filter(a => a.got).length} из ${s.achievements.length} · убито монстров: ${s.kills}.</p>
-  <h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`).join("")}</div>
-  <h2 class="sec">БЕСТИАРИЙ</h2><div class="beasts">`;
+  const s = SUM, rw = Object.fromEntries(s.rewards.map(r => [r.id, r]));
+  // Состояние награды: забрана, ждёт или ещё закрыта.
+  const tag = r => !r ? "" : r.at ? `<em class="rw got">${esc(r.text)} · получено</em>` : r.open ? `<button class="claim" data-claim="${r.id}">забрать: ${esc(r.text)}</button>` : `<em class="rw">награда: ${esc(r.text)}</em>`;
+  const ready = s.rewards.filter(r => r.open && !r.at);
+  let h = `<p class="lead">Летопись</p><p class="sub">Достижений: ${s.achievements.filter(a => a.got).length} из ${s.achievements.length} · убито монстров: ${s.kills}.${buffsText(s)}</p>`;
+  if (ready.length) h += `<h2 class="sec">НАГРАДЫ ЖДУТ</h2><ul class="list rewards">${ready.map(r => `<li><span><b>${esc(r.name)}</b><small>${esc(r.text)}</small></span><button class="ghostbtn" data-claim="${r.id}">забрать</button></li>`).join("")}</ul>
+  ${ready.length > 1 ? `<button class="act gold" id="claimAll">ЗАБРАТЬ ВСЁ · ${ready.length}</button>` : ""}`;
+  h += `<h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""} ${rw["a:" + a.id]?.reward.item ? "hard" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span>${tag(rw["a:" + a.id])}</div>`).join("")}</div>
+  <h2 class="sec">БЕСТИАРИЙ</h2><p class="sub">Первое убийство открывает вид. Забери запись — и бои с ним дают +${Math.round(G.STUDY * 100)}% опыта.</p><div class="beasts">`;
   for (const m of Object.values(G.MONSTERS)) {
     if (m.tavern) continue;
-    const k = s.killed[m.id] || 0;
-    h += `<div class="beast ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span></div>`;
+    const k = s.killed[m.id] || 0, r = rw["m:" + m.id];
+    const st = r?.at ? "изучен" : k ? `<button class="claim" data-claim="${r.id}">изучить</button>` : "";
+    h += `<div class="beast ${k ? "" : "unseen"} ${r?.at ? "studied" : ""}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span>${st ? `<span class="st">${st}</span>` : ""}</div>`;
   }
-  h += `</div><h2 class="sec">ТИТУЛЫ</h2><ul class="list">${G.TITLES.map((t, i) => `<li><span>${esc(t)}</span><span>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</span></li>`).join("")}</ul>
+  // Почётные титулы: получены за достижения, носится один. Пустой id — снова носить титул уровня.
+  h += `</div><h2 class="sec">ПОЧЁТНЫЕ ТИТУЛЫ</h2><p class="sub">Даются вместо награды за некоторые достижения. Эффект работает, пока титул надет.</p><ul class="list titles">${Object.entries(G.HONOR).map(([id, t]) => {
+    const own = s.honors.includes(id), worn = s.honor === id;
+    return `<li class="${own ? "" : "locked"}"><span><b>${esc(t.name)}</b><small>${esc(t.desc)} · за «${esc(s.achievements.find(a => a.id === id).name)}»</small></span>${worn ? `<button class="ghostbtn" data-wear="">снять</button>` : own ? `<button class="ghostbtn" data-wear="${id}">надеть</button>` : `<em>закрыт</em>`}</li>`;
+  }).join("")}</ul>`;
+  h += `<h2 class="sec">ТИТУЛЫ УРОВНЯ</h2><ul class="list titles">${G.TITLES.map((t, i) => { const r = rw["t:" + i]; return `<li class="${r?.reward.item ? "hard" : ""}"><span><b>${esc(t)}</b><small>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</small></span>${r ? (r.at ? `<em>${esc(r.text)} · получено</em>` : r.open ? `<button class="ghostbtn" data-claim="${r.id}">забрать</button>` : `<em>${esc(r.text)}</em>`) : ""}</li>`; }).join("")}</ul>
 `;
   main.innerHTML = h;
 }
+function wear(id, quiet) {
+  const m = S.meta.honor ||= { log: [] }, t = todayISO(), last = m.log[m.log.length - 1];
+  if (last?.at === t) last.id = id; else m.log.push({ at: t, id });
+  if (!quiet) { touchMeta(); recompute(); }
+}
+// Забрать награды: запись в журнал наград с сегодняшней датой — с неё начинают действовать бафы и вещи.
+function claim(ids) {
+  const m = S.meta.rewards ||= { log: [] }, have = new Set(m.log.map(e => e.id));
+  ids = ids.filter(id => !have.has(id));
+  if (!ids.length) return;
+  for (const id of ids) m.log.push({ at: todayISO(), id });
+  // Первый полученный почётный титул надевается сам.
+  const hon = ids.map(G.rewardOf).find(r => r.honor);
+  if (hon && !SUM.honor) wear(hon.honor, true);
+  touchMeta(); recompute(); renderTop(); renderChronicle();
+  const items = ids.map(G.rewardOf).filter(r => r.item).map(r => G.UNIQUE[r.item].name);
+  toast(ids.length === 1 ? `Получено: ${G.rewardText(G.rewardOf(ids[0]), ids[0])}` : `Забрано наград: ${ids.length}${items.length ? ` · уникальные вещи: ${items.join(", ")}` : ""}`);
+}
+main.addEventListener("click", e => {
+  if (route().tab !== "chronicle") return;
+  const c = e.target.closest("[data-claim]");
+  if (c) { claim([c.dataset.claim]); return; }
+  const w = e.target.closest("[data-wear]");
+  if (w) { wear(w.dataset.wear); renderTop(); renderChronicle(); return; }
+  if (e.target.closest("#claimAll")) claim(SUM.rewards.filter(r => r.open && !r.at).map(r => r.id));
+});
 
 // ---------- билд: характеристики, древо, снаряжение ----------
 let treeTab = "str";
@@ -537,7 +577,10 @@ function treeHTML(s, st) {
     return `<button class="node ${cls}" data-node="${n.id}" ${can || undo ? "" : "disabled"}><b>${esc(n.name)}</b><small>${esc(n.desc)}${fromGear ? " · от вещи" : ""}</small></button>`;
   }).join("")}</div>`).join("")}</div>`;
 }
-const RARITY = { common: "обычная", rare: "редкая", legendary: "легендарная", mythic: "мифическая" };
+const RARITY = { common: "обычная", rare: "редкая", unique: "уникальная", legendary: "легендарная", mythic: "мифическая" };
+// Активные бафы: «Вдохновение — ещё 5 дн.»; если баф начнётся позже (продление очереди), показываем дату.
+const buffsText = s => s.buffs.length ? ` ${s.buffs.map(b => `<b class="gold">${esc(b.name)}</b> ${b.from > todayISO() ? `с ${fmt(b.from)}` : `ещё ${b.left} дн.`}`).join(", ")}` : "";
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
 function gearHTML(s) {
   const eq = s.build.eq, inv = s.inventory;
   let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="slots">${G.SLOTS.map(sl => {
