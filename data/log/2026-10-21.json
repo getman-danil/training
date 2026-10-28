@@ -20,7 +20,7 @@
         8,
         8
       ],
-      "note": ""
+      "note": "Мало спал"
     },
     {
       "type": "ex",
@@ -28,7 +28,11 @@
       "plan": "3×8 на ногу",
       "planWeight": "8 кг",
       "weight": "8 кг",
-      "reps": [],
+      "reps": [
+        8,
+        8,
+        8
+      ],
       "note": ""
     },
     {
@@ -37,7 +41,9 @@
       "plan": "3×8",
       "planWeight": "резинка 15–25",
       "weight": "резинка 15–25",
-      "reps": [],
+      "reps": [
+        8
+      ],
       "note": ""
     },
     {
@@ -72,9 +78,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 570,
-    "dealt": 120,
+    "dealt": 240,
     "overkill": 60,
     "killed": false
   },
-  "updatedAt": 1793204387997
+  "updatedAt": 1793204404054
 }
