@@ -90,6 +90,9 @@ main{max-width:560px;margin:0 auto;padding:0 16px}
 .banner{position:absolute;left:0;right:0;top:38%;text-align:center;font-family:var(--caps);font-weight:300;font-size:30px;letter-spacing:.25em;color:var(--gold);text-shadow:0 0 20px rgba(0,0,0,.9);pointer-events:none;
   background:linear-gradient(90deg,transparent,rgba(0,0,0,.65) 20%,rgba(0,0,0,.65) 80%,transparent);padding:10px 0}
 .banner.red{color:#c0392b}
+.banner.grey{color:var(--dust)}
+.day.skip,.mon.skip{opacity:.4}
+.day.skip small::after{content:" ×"}
 .banner small{display:block;font-size:14px;letter-spacing:.2em;color:var(--dust)}
 
 /* упражнения */

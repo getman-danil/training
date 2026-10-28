@@ -179,11 +179,13 @@ export function weekGoal(w) { return w.days.filter(d => !isCardio(d) && !isOptio
 export function weekOf(dateISO) {
   return WEEKS.find(w => dateISO >= w.from && dateISO <= w.to) || (dateISO < WEEKS[0].from ? WEEKS[0] : WEEKS[WEEKS.length - 1]);
 }
-function dayFinished(L) { return !!(L && L.finished && L.items?.some(x => (x.reps || []).some(r => +r > 0) || x.done)); }
+// Бой засчитан, если есть записи и он завершён — или день уже прошёл (перенос из тетради без кнопки «Завершить»).
+// Пропущенный день (skipped) и пустой день просто не засчитываются: никаких других последствий.
+function dayFinished(L, past) { return !!(L && !L.skipped && (L.finished || past) && L.items?.some(x => (x.reps || []).some(r => +r > 0) || x.done)); }
 
 export function weekStatus(w, logs, meta, today) {
   const goal = weekGoal(w);
-  const done = w.days.filter(d => !isCardio(d) && dayFinished(logs[d.date])).length;
+  const done = w.days.filter(d => !isCardio(d) && dayFinished(logs[d.date], d.date < today)).length;
   const tavern = TAVERN_WEEKS.has(w.n);
   const frozen = (meta.freezes || []).includes(w.n);
   let s;
@@ -225,7 +227,7 @@ export function summarize(logs, meta, today) {
     else if (L.finished && b.dealt > 0) fled++;
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF; }
-    if (L.finishedAt && new Date(L.finishedAt).getHours() >= 22) nightOwl++;
+    if (L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22) nightOwl++;
     xp += dx; perDay[d.date] = { xp: dx, battle: b, prs: nPR };
   }
   const lv = levelFromXp(xp);

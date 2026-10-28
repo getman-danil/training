@@ -31,7 +31,8 @@ function getLog(day, create) {
 function commit(day, L) {
   const b = G.battle(day, L), m = G.monsterFor(day);
   L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed } : { patrol: true };
-  if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = todayISO();
+  // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
+  if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.date < todayISO() ? day.date : todayISO();
   const before = SUM?.level;
   touchLog(L);
   recompute(); renderTop();
@@ -87,6 +88,7 @@ let cur = null; // { day, L }
 
 function dayState(d) {
   const L = S.logs[d.date]; if (!L) return "";
+  if (L.skipped) return "skip";
   if (G.isCardio(d)) return L.finished ? "kill" : "";
   const b = G.battle(d, L);
   return b.killed ? "kill" : L.finished && b.dealt > 0 ? "fled" : "";
@@ -141,9 +143,10 @@ function updateStage(animate, info) {
   $("#hpS").textContent = b.over ? `перебор +${b.over}` : m.tavern ? "спарринг" : "здоровье";
   const art = $("#art");
   art.classList.toggle("dead", b.killed);
-  art.classList.toggle("fled", !b.killed && !!L?.finished && b.dealt > 0);
+  art.classList.toggle("fled", !b.killed && (!!L?.skipped || (!!L?.finished && b.dealt > 0)));
   const host = $("#bannerHost");
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : "ВРАГ ПОВЕРЖЕН"}<small>+${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
+  else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
@@ -162,10 +165,26 @@ function exercisesHTML(day) {
   day.items.forEach((it, i) => { h += it.type === "ex" ? exHTML(day, i, b) : noteHTML(day, i); });
   h += `</div><div class="finish">
     <textarea id="dayNote" placeholder="Заметка о тренировке: самочувствие, сон, что было тяжело">${esc(L?.dayNote || "")}</textarea>
-    ${L?.finished ? `<button class="act" id="reopen">ВЕРНУТЬСЯ В БОЙ</button><div class="hint">Бой завершён ${L.performedOn ? fmt(L.performedOn) : ""}. Записи можно править.</div>`
-      : `<button class="act gold" id="finish">ЗАВЕРШИТЬ БОЙ</button><div class="hint">Тап по клетке — подход по плану. Повторный тап — поправить число.</div>`}
+    ${finishButtons(day, L, b.setsDone, "ЗАВЕРШИТЬ БОЙ", "ВЕРНУТЬСЯ В БОЙ")}
   </div>`;
   return h;
+}
+// Кнопки внизу дня: завершить, пропустить (если ещё ничего не записано), отменить пропуск, дата выполнения.
+function finishButtons(day, L, started, finishTxt, reopenTxt) {
+  return `<div id="finBtns" class="finish" style="margin:0">${finishInner(day, L, started, finishTxt, reopenTxt)}</div>`;
+}
+function refreshFinish() {
+  const el = $("#finBtns"), day = cur.day, L = S.logs[day.date]; if (!el) return;
+  el.outerHTML = G.isCardio(day) ? finishButtons(day, L, L?.items?.some(x => x.done), "ПАТРУЛЬ ПРОЙДЕН", "ПАТРУЛЬ ПРОЙДЕН ✦")
+    : finishButtons(day, L, G.battle(day, L).setsDone, "ЗАВЕРШИТЬ БОЙ", "ВЕРНУТЬСЯ В БОЙ");
+}
+function finishInner(day, L, started, finishTxt, reopenTxt) {
+  const date = L?.performedOn ? `<label class="hint" style="display:flex;gap:10px;align-items:center;justify-content:center">сделал
+    <input type="date" id="performedOn" value="${esc(L.performedOn)}" style="width:auto;font-size:16px"></label>` : "";
+  if (L?.skipped) return `<div class="hint">Тренировка пропущена: опыта за неё нет, других штрафов нет. Если из-за пропуска неделя не набрала нужное число боёв, её можно заморозить в «Походе», чтобы серия не прервалась.</div><button class="act" id="unskip">ОТМЕНИТЬ ПРОПУСК</button>`;
+  if (L?.finished) return `<button class="act" id="reopen">${reopenTxt}</button>${date}<div class="hint">Записи можно править.</div>`;
+  return `<button class="act gold" id="finish">${finishTxt}</button>${date}
+    ${started ? `<div class="hint">Тап по клетке — подход по плану. Повторный тап — поправить число.</div>` : `<button class="act" id="skip">ПРОПУСТИЛ ТРЕНИРОВКУ</button>`}`;
 }
 function weekNote(day) { const w = G.WEEKS.find(x => x.n === day.week); return w.note ? ` · ${esc(w.note)}` : ""; }
 
@@ -202,7 +221,7 @@ function cardioHTML(day, L) {
   <div class="dayhead"><h1>${esc(day.title)}</h1><p>${esc(day.dow)}, ${fmt(day.date)}${weekNote(day)}</p></div>
   ${items}
   <div class="finish"><textarea id="dayNote" placeholder="Заметка">${esc(L?.dayNote || "")}</textarea>
-  ${L?.finished ? `<button class="act" id="reopen">ПАТРУЛЬ ПРОЙДЕН ✦</button>` : `<button class="act gold" id="finish">ПАТРУЛЬ ПРОЙДЕН</button>`}</div>`;
+  ${finishButtons(day, L, L?.items?.some(x => x.done), "ПАТРУЛЬ ПРОЙДЕН", "ПАТРУЛЬ ПРОЙДЕН ✦")}</div>`;
 }
 
 function refreshEx(i) {
@@ -214,6 +233,7 @@ function refreshEx(i) {
 // Записать подход и показать урон.
 function setRep(i, k, val) {
   const day = cur.day, L = getLog(day, true), li = L.items[i];
+  L.skipped = false;
   const before = G.battle(day, L);
   const prBefore = Object.keys(SUM.prs[day.date] || {}).length;
   if (val == null) { if (k === li.reps.length - 1 && k >= G.parsePlan(day.items[i]).sets) li.reps.pop(); else li.reps[k] = null; }
@@ -222,7 +242,7 @@ function setRep(i, k, val) {
   const after = G.battle(day, L);
   const crit = !!(SUM.prs[day.date] || {})[i + ":" + k] && Object.keys(SUM.prs[day.date] || {}).length > prBefore;
   const dmg = (after.dealt + after.over) - (before.dealt + before.over);
-  refreshEx(i);
+  refreshEx(i); refreshFinish();
   updateStage(true, { dmg, crit });
   if (!before.killed && after.killed) { const m = G.monsterFor(day); toast(m.tavern ? "Спарринг выигран" : `${m.name} повержен!`); if (navigator.vibrate) navigator.vibrate([60, 60, 120]); }
   if (crit) toast("Критический удар: личный рекорд!");
@@ -245,8 +265,9 @@ main.addEventListener("click", e => {
   const n = e.target.closest("[data-note]");
   if (n) {
     const day = cur.day, L = getLog(day, true), i = +n.dataset.note;
-    L.items[i].done = !L.items[i].done; commit(day, L);
+    L.items[i].done = !L.items[i].done; L.skipped = false; commit(day, L);
     const tmp = document.createElement("div"); tmp.innerHTML = noteHTML(day, i); n.replaceWith(tmp.firstElementChild);
+    refreshFinish();
     return;
   }
   if (e.target.closest("#finish")) {
@@ -260,6 +281,8 @@ main.addEventListener("click", e => {
     runSync();
     return;
   }
+  if (e.target.closest("#skip")) { const day = cur.day, L = getLog(day, true); L.skipped = true; L.finished = false; commit(day, L); render(); runSync(); return; }
+  if (e.target.closest("#unskip")) { const day = cur.day, L = getLog(day, true); L.skipped = false; commit(day, L); render(); return; }
   if (e.target.closest("#reopen")) { const day = cur.day, L = getLog(day, true); L.finished = false; commit(day, L); render(); return; }
 });
 main.addEventListener("change", e => {
@@ -270,6 +293,7 @@ main.addEventListener("change", e => {
     commit(day, L);
     if (t.dataset.w != null) refreshEx(i);
   }
+  if (t.id === "performedOn" && cur && t.value) { const L = getLog(cur.day, true); L.performedOn = t.value; commit(cur.day, L); }
   if (t.id === "dayNote" && cur) { const L = getLog(cur.day, true); L.dayNote = t.value; commit(cur.day, L); }
 });
 
