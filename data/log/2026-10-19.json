@@ -28,7 +28,11 @@
       "plan": "3×10",
       "planWeight": "16 кг",
       "weight": "16 кг",
-      "reps": [],
+      "reps": [
+        12,
+        10,
+        12
+      ],
       "note": ""
     },
     {
@@ -72,9 +76,9 @@
   "game": {
     "monster": "Гоблин-шаман",
     "hp": 570,
-    "dealt": 120,
-    "overkill": 0,
+    "dealt": 210,
+    "overkill": 12,
     "killed": false
   },
-  "updatedAt": 1793204179683
+  "updatedAt": 1793204197566
 }
