@@ -29,7 +29,11 @@
       "plan": "3×10",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12,
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -38,7 +42,11 @@
       "plan": "3×12",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12,
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -47,7 +55,11 @@
       "plan": "3×8 на ногу",
       "planWeight": "8 кг",
       "weight": "8 кг",
-      "reps": [],
+      "reps": [
+        8,
+        8,
+        8
+      ],
       "note": ""
     },
     {
@@ -73,9 +85,9 @@
   "game": {
     "monster": "Гоблин-шаман",
     "hp": 600,
-    "dealt": 150,
-    "overkill": 39,
+    "dealt": 420,
+    "overkill": 45,
     "killed": false
   },
-  "updatedAt": 1793200694968
+  "updatedAt": 1793200720586
 }
