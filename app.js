@@ -78,6 +78,7 @@ function render() {
   if (r.tab === "journey") renderJourney();
   else if (r.tab === "progress") renderProgress();
   else if (r.tab === "hero") renderHero();
+  else if (r.tab === "chronicle") renderChronicle();
   else if (r.tab === "settings") renderSettings();
   else renderBattle(G.DAY_BY_DATE[r.arg] ? r.arg : defaultDate());
 }
@@ -477,14 +478,6 @@ function renderHero() {
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
   ${buildHTML(s)}
-  <h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`).join("")}</div>
-  <h2 class="sec">БЕСТИАРИЙ</h2><div class="beasts">`;
-  for (const m of Object.values(G.MONSTERS)) {
-    if (m.tavern) continue;
-    const k = s.killed[m.id] || 0;
-    h += `<div class="beast ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span></div>`;
-  }
-  h += `</div><h2 class="sec">ТИТУЛЫ</h2><ul class="list">${G.TITLES.map((t, i) => `<li><span>${esc(t)}</span><span>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</span></li>`).join("")}</ul>
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
@@ -494,6 +487,24 @@ function renderHero() {
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
+  main.innerHTML = h;
+}
+
+// =====================================================================
+// ЛЕТОПИСЬ: достижения, бестиарий, титулы
+// =====================================================================
+function renderChronicle() {
+  const s = SUM;
+  let h = `<p class="lead">Летопись</p><p class="sub">Достижений: ${s.achievements.filter(a => a.got).length} из ${s.achievements.length} · убито монстров: ${s.kills}.</p>
+  <h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`).join("")}</div>
+  <h2 class="sec">БЕСТИАРИЙ</h2><div class="beasts">`;
+  for (const m of Object.values(G.MONSTERS)) {
+    if (m.tavern) continue;
+    const k = s.killed[m.id] || 0;
+    h += `<div class="beast ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span></div>`;
+  }
+  h += `</div><h2 class="sec">ТИТУЛЫ</h2><ul class="list">${G.TITLES.map((t, i) => `<li><span>${esc(t)}</span><span>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</span></li>`).join("")}</ul>
+`;
   main.innerHTML = h;
 }
 
