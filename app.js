@@ -556,7 +556,7 @@ function buildHTML(s) {
   for (const st of G.STATS) {
     const v = a.stats[st.id], bonus = eff[st.id] - v, canDown = v > prev.stats[st.id];
     h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${eff[st.id]}</span><button data-st="${st.id}" data-d="1" ${s.free > 0 ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
-      <small>${esc(st.per)} за очко${bonus ? ` · ${v} вложено, +${bonus} от узлов и вещей` : ""}</small></div>`;
+      <small>${esc(st.per)} за очко${bonus ? ` · ${v} вложено, +${bonus} от узлов и вещей` : ""}${st.id === "lck" ? `<br>Сейчас: находка ${Math.round(s.findNow.find * 100)}%${s.findNow.rare ? `, из них редких ${Math.round(s.findNow.rare * 100)}%` : ""}. Сверх ${Math.round(G.FIND_MAX * 100)}% излишок идёт в шанс редкой находки.` : ""}</small></div>`;
   }
   h += `</div><h2 class="sec">ДРЕВО НАВЫКОВ</h2><p class="sub">Очков навыка: <b class="gold">${s.skillFree}</b> из ${s.skillPoints} (1 за уровень). Узел открывается, когда взяты те, что над ним. Из двух вершин — только одна.</p>
   <div class="ttabs">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}">${st.name}</button>`).join("")}</div>${treeHTML(s, treeTab)}`;
