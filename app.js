@@ -36,13 +36,13 @@ function commit(day, L) {
   const before = SUM?.level;
   touchLog(L);
   recompute(); renderTop();
-  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +${SUM.level - before} очко характеристик`);
+  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
 }
 
 // ---------- верхняя панель ----------
 function renderTop() {
   $("#lvl").textContent = SUM.level;
-  $("#lvlBtn").classList.toggle("pts", SUM.free > 0);
+  $("#lvlBtn").classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
   $("#xpTxt").textContent = `${SUM.title} · ${SUM.into} / ${SUM.need}`;
   $("#xpBar").style.width = (SUM.into / SUM.need * 100).toFixed(1) + "%";
 }
@@ -148,7 +148,8 @@ function updateStage(animate, info) {
   art.classList.toggle("fled", !b.killed && (!!L?.skipped || (!!L?.finished && b.dealt > 0)));
   const host = $("#bannerHost");
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
-  const pd = SUM.perDay[day.date], found = pd?.find ? ` · находка${pd.find > 1 ? " ×" + pd.find : ""}` : "";
+  const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
+  const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
@@ -483,7 +484,7 @@ function renderHero() {
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
-  <p>Очки характеристик: 1 за уровень и 1 за каждого босса. Каждые ${G.PERK_STEP} очков в характеристике открывают выбор из двух перков. Билд действует на бои с того дня, как ты его поменял.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
@@ -491,60 +492,93 @@ function renderHero() {
   main.innerHTML = h;
 }
 
-// ---------- билд: характеристики и перки ----------
+// ---------- билд: характеристики, древо, снаряжение ----------
+let treeTab = "str";
 function buildHTML(s) {
-  const b = s.build, prev = prevBuild();
-  let h = `<h2 class="sec">ХАРАКТЕРИСТИКИ</h2><p class="sub">Свободных очков: <b class="gold">${s.free}</b> из ${s.points} (уровни + боссы).${s.free > 0 ? " Вложи их — бонусы действуют с сегодняшних боёв." : ""}</p><div class="build">`;
+  const a = s.build.alloc, eff = s.build.stats, prev = prevAlloc();
+  let h = `<h2 class="sec">ХАРАКТЕРИСТИКИ</h2><p class="sub">Свободных очков: <b class="gold">${s.free}</b> из ${s.points} (уровни + боссы).</p><div class="build">`;
   for (const st of G.STATS) {
-    const v = b.stats[st.id], canDown = v > prev.stats[st.id], canUp = s.free > 0;
-    h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${v}</span><button data-st="${st.id}" data-d="1" ${canUp ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
-      <small>${esc(st.per)} за очко</small><div class="perks">`;
-    G.PERKS[st.id].forEach((pair, t) => {
-      const open = G.perkSlots(b, st.id) > t, chosen = pair.find(p => b.perks.includes(p.id)), locked = chosen && prev.perks.includes(chosen.id);
-      h += `<div class="tier"><span class="need">${(t + 1) * G.PERK_STEP}</span>${pair.map(p => {
-        const cls = b.perks.includes(p.id) ? "on" : !open || locked ? "off" : "pick";
-        return `<button class="perk ${cls}" data-perk="${p.id}" ${cls === "pick" || (cls === "on" && !locked) ? "" : "disabled"}><b>${esc(p.name)}</b><small>${esc(p.desc)}</small></button>`;
-      }).join("")}</div>`;
-    });
-    h += `</div></div>`;
+    const v = a.stats[st.id], bonus = eff[st.id] - v, canDown = v > prev.stats[st.id];
+    h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${eff[st.id]}</span><button data-st="${st.id}" data-d="1" ${s.free > 0 ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
+      <small>${esc(st.per)} за очко${bonus ? ` · ${v} вложено, +${bonus} от узлов и вещей` : ""}</small></div>`;
   }
-  const spent = s.spent, can = G.canRespec(S.meta, todayISO());
-  h += `</div>${spent ? (can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ПЕРКИ</button><p class="hint">Сброс — один раз за блок. Уже полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Очки, вложенные сегодня, можно вернуть кнопкой «−».</p>`) : ""}`;
+  h += `</div><h2 class="sec">ДРЕВО НАВЫКОВ</h2><p class="sub">Очков навыка: <b class="gold">${s.skillFree}</b> из ${s.skillPoints} (1 за уровень). Узел открывается, когда взяты те, что над ним. Из двух вершин — только одна.</p>
+  <div class="ttabs">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}">${st.name}</button>`).join("")}</div>${treeHTML(s, treeTab)}`;
+  h += gearHTML(s);
+  const can = G.canRespec(S.meta, todayISO());
+  if (s.spent || s.skillSpent) h += can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ДРЕВО</button><p class="hint">Сброс — один раз за блок. Снаряжение не снимается, полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Вложенное сегодня можно вернуть.</p>`;
   return h;
 }
-// Билд, который действовал до сегодняшнего дня: сегодняшние изменения можно откатить без сброса.
-// После сброса сегодня откатывать некуда — пол становится нулевым.
-function prevBuild() {
+function treeHTML(s, st) {
+  const taken = s.build.alloc.nodes, eff = s.build.nodes, prev = prevAlloc().nodes;
+  const rows = [0, 1, 2, 3].map(r => G.TREE[st].filter(n => n.row === r));
+  return `<div class="tree">${rows.map((ns, r) => `<div class="trow r${r}">${ns.map(n => {
+    const own = taken.includes(n.id), fromGear = !own && eff.includes(n.id);
+    const can = !own && s.skillFree > 0 && G.canTakeNode(taken, n.id);
+    // Вернуть можно узел, взятый сегодня, если от него ничего не зависит.
+    const undo = own && !prev.includes(n.id) && !taken.some(x => G.NODE_BY_ID[x].req.includes(n.id));
+    const cls = [n.kind, n.col, own || fromGear ? "on" : can ? "pick" : "off", fromGear ? "gear" : ""].join(" ");
+    return `<button class="node ${cls}" data-node="${n.id}" ${can || undo ? "" : "disabled"}><b>${esc(n.name)}</b><small>${esc(n.desc)}${fromGear ? " · от вещи" : ""}</small></button>`;
+  }).join("")}</div>`).join("")}</div>`;
+}
+const RARITY = { common: "обычная", rare: "редкая", legendary: "легендарная" };
+function gearHTML(s) {
+  const eq = s.build.eq, inv = s.inventory;
+  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="slots">${G.SLOTS.map(sl => {
+    const it = eq[sl.id] && G.itemOf(eq[sl.id]);
+    return `<div class="slot ${it ? it.rarity : "empty"}"><span>${sl.name}</span>${it ? `<b>${esc(it.name)}</b><small>${esc(G.itemText(it))}</small><button class="ghostbtn" data-unequip="${sl.id}">снять</button>` : "<b>пусто</b>"}</div>`;
+  }).join("")}</div>`;
+  if (!inv.length) return h + `<p class="hint">Вещи падают с находок (шанс растёт с Удачей) и всегда — с боссов.</p>`;
+  h += `<ul class="list inv">${inv.slice().reverse().map(it => {
+    const on = eq[it.slot] === it.id;
+    return `<li class="${it.rarity}"><span><b>${esc(it.name)}</b><small>${G.SLOTS.find(x => x.id === it.slot).name} · ${RARITY[it.rarity]} · ${fmt(it.date)}<br>${esc(G.itemText(it))}</small></span>${on ? "<em>надето</em>" : `<button class="ghostbtn" data-equip="${it.id}">надеть</button>`}</li>`;
+  }).join("")}</ul>`;
+  return h;
+}
+// Что было вложено до сегодняшнего дня: сегодняшние изменения можно откатить без сброса. После сброса сегодня пол нулевой.
+function prevAlloc() {
   const log = S.meta.build?.log || [], last = log[log.length - 1];
-  return last?.at === todayISO() && last.respec ? G.buildAt({}, "") : G.buildAt(S.meta, G.addDays(todayISO(), -1));
+  return last?.at === todayISO() && last.respec ? G.allocAt({}, "") : G.allocAt(S.meta, G.addDays(todayISO(), -1));
 }
-function editBuild(fn) {
-  const t = todayISO(), bm = S.meta.build ||= { log: [], respecs: [] };
-  let e = bm.log[bm.log.length - 1];
-  if (!e || e.at !== t) { const c = G.currentBuild(S.meta); e = { at: t, stats: { ...c.stats }, perks: [...c.perks] }; bm.log.push(e); }
-  fn(e, bm);
-  // Перк держится, пока в характеристике хватает очков на его ступень.
-  e.perks = e.perks.filter(id => { const p = G.PERK_BY_ID[id]; return p && Math.floor(e.stats[p.stat] / G.PERK_STEP) > p.tier; });
-  touchMeta(); recompute(); renderTop(); renderHero();
+function todayEntry(key, init) {
+  const t = todayISO(), m = S.meta[key] ||= { log: [] };
+  let e = m.log[m.log.length - 1];
+  if (!e || e.at !== t) { e = { at: t, ...init() }; m.log.push(e); }
+  return [e, m];
 }
+function saveHero() { touchMeta(); recompute(); renderTop(); renderHero(); }
 main.addEventListener("click", e => {
   if (route().tab !== "hero") return;
+  const tt = e.target.closest("[data-tt]");
+  if (tt) { treeTab = tt.dataset.tt; renderHero(); return; }
   const st = e.target.closest("[data-st]");
   if (st) {
-    const d = +st.dataset.d;
+    const d = +st.dataset.d, k = st.dataset.st;
     if (d > 0 && SUM.free <= 0) return;
-    editBuild(b => { b.stats[st.dataset.st] = Math.max(prevBuild().stats[st.dataset.st], b.stats[st.dataset.st] + d); });
-    return;
+    const [b] = todayEntry("build", () => { const a = G.allocAt(S.meta, "9999-12-31"); return { stats: a.stats, nodes: a.nodes }; });
+    b.stats[k] = Math.max(prevAlloc().stats[k], b.stats[k] + d);
+    saveHero(); return;
   }
-  const pk = e.target.closest("[data-perk]");
-  if (pk) {
-    const p = G.PERK_BY_ID[pk.dataset.perk], pair = G.PERKS[p.stat][p.tier].map(x => x.id);
-    editBuild(b => { const had = b.perks.includes(p.id); b.perks = b.perks.filter(id => !pair.includes(id)); if (!had) b.perks.push(p.id); });
-    return;
+  const nd = e.target.closest("[data-node]");
+  if (nd) {
+    const id = nd.dataset.node;
+    const [b] = todayEntry("build", () => { const a = G.allocAt(S.meta, "9999-12-31"); return { stats: a.stats, nodes: a.nodes }; });
+    if (b.nodes.includes(id)) b.nodes = b.nodes.filter(x => x !== id);
+    else if (SUM.skillFree > 0 && G.canTakeNode(b.nodes, id)) b.nodes.push(id);
+    saveHero(); return;
+  }
+  const eq = e.target.closest("[data-equip]"), uq = e.target.closest("[data-unequip]");
+  if (eq || uq) {
+    const [g] = todayEntry("gear", () => ({ eq: G.gearAt(S.meta, "9999-12-31") }));
+    if (eq) g.eq[G.itemOf(eq.dataset.equip).slot] = eq.dataset.equip; else delete g.eq[uq.dataset.unequip];
+    saveHero(); return;
   }
   if (e.target.closest("#respec")) {
-    if (!confirm("Сбросить все очки и перки? В этом блоке сброс больше не будет доступен.")) return;
-    editBuild((b, bm) => { for (const k in b.stats) b.stats[k] = 0; b.perks = []; b.respec = true; (bm.respecs ||= []).push(G.weekOf(todayISO()).block); });
+    if (!confirm("Сбросить все очки характеристик и древо? В этом блоке сброс больше не будет доступен.")) return;
+    const [b, bm] = todayEntry("build", () => ({}));
+    Object.assign(b, { stats: { str: 0, end: 0, agi: 0, wil: 0, lck: 0 }, nodes: [], respec: true });
+    (bm.respecs ||= []).push(G.weekOf(todayISO()).block);
+    saveHero();
   }
 });
 
