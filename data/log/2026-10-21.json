@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "Б — жим + одна нога",
   "performedOn": "2026-10-26",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-28T17:10:12.050Z",
   "dayNote": "",
   "items": [
     {
@@ -82,10 +82,10 @@
   "skipped": false,
   "game": {
     "monster": "Гоблин-лучник",
-    "hp": 570,
-    "dealt": 315,
-    "overkill": 80,
+    "hp": 798,
+    "dealt": 453,
+    "overkill": 112,
     "killed": false
   },
-  "updatedAt": 1793205136333
+  "updatedAt": 1793207412050
 }
