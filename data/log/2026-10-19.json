@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-19",
+  "week": 2,
+  "block": "Блок 1. Возвращение",
+  "title": "А — тяга + присед",
+  "performedOn": "2026-10-23",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "ex",
+      "name": "Подтягивания прямым хватом",
+      "plan": "4×4",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Гоблет-присед, пятки на блинах 2,5 кг",
+      "plan": "3×10",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания на брусьях",
+      "plan": "3×6",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга гири в наклоне одной рукой (упор рукой в стул)",
+      "plan": "3×12 на руку",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Ягодичный мост на полу, гиря на тазу",
+      "plan": "3×15",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Подъём коленей в висе",
+      "plan": "3×10",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Гоблин-шаман",
+    "hp": 570,
+    "dealt": 120,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1793204179683
+}
