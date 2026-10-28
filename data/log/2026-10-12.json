@@ -43,7 +43,8 @@
       "weight": "свой вес",
       "reps": [
         8,
-        5
+        9,
+        10
       ],
       "note": ""
     },
@@ -79,9 +80,9 @@
   "game": {
     "monster": "Гоблин-налётчик",
     "hp": 570,
-    "dealt": 270,
-    "overkill": 28,
+    "dealt": 300,
+    "overkill": 82,
     "killed": false
   },
-  "updatedAt": 1793198940132
+  "updatedAt": 1793198951853
 }
