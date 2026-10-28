@@ -18,7 +18,7 @@
         3,
         3,
         3,
-        3
+        4
       ],
       "note": ""
     },
@@ -73,8 +73,8 @@
     "monster": "Гоблин-налётчик",
     "hp": 570,
     "dealt": 120,
-    "overkill": 0,
+    "overkill": 10,
     "killed": false
   },
-  "updatedAt": 1793198869686
+  "updatedAt": 1793198892591
 }
