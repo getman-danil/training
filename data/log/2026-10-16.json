@@ -15,9 +15,9 @@
       "planWeight": "16 кг",
       "weight": "16 кг",
       "reps": [
-        10,
-        10,
-        10,
+        12,
+        12,
+        12,
         10,
         10
       ],
@@ -74,8 +74,8 @@
     "monster": "Гоблин-шаман",
     "hp": 600,
     "dealt": 150,
-    "overkill": 0,
+    "overkill": 18,
     "killed": false
   },
-  "updatedAt": 1793200668904
+  "updatedAt": 1793200680491
 }
