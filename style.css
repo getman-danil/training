@@ -167,7 +167,9 @@ h2.sec{font-family:var(--caps);font-weight:500;letter-spacing:.2em;font-size:14p
 .wk .mons{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
 .mon{width:40px;height:40px;border:1px solid var(--line);display:grid;place-items:center;position:relative;overflow:hidden;background:var(--ash)}
 .mon img{max-width:100%;max-height:100%;object-fit:contain}
-.mon.cardio{font-family:var(--caps);font-size:11px;color:var(--mute)}
+.mon.patrol svg{width:30px;height:30px;opacity:.55}
+.mon.patrol.kill svg{opacity:1}
+.cardio .torch{width:56px;height:56px;display:block;margin:0 auto 6px}
 .mon.kill{border-color:var(--gold)}
 .mon.kill::after{content:"✦";position:absolute;right:1px;bottom:-2px;color:var(--gold);font-size:12px}
 .mon.fled img{opacity:.35}

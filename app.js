@@ -224,9 +224,15 @@ function noteHTML(day, i) {
   return `<button class="note-it ${on ? "on" : ""}" data-note="${i}"><span class="box">${on ? "✓" : ""}</span><span>${esc(it.text)}${it.hint ? `<br><small>${esc(it.hint)}</small>` : ""}</span></button>`;
 }
 
+// Пока нет картинки патруля: факел дозорного.
+function patrolSVG() {
+  return `<svg class="torch" viewBox="0 0 40 40" aria-hidden="true"><path d="M17 19h6l-2 18h-2z" fill="#4a3220" stroke="#c9a24a" stroke-width="1"/><rect x="15.5" y="17" width="9" height="3" fill="#c9a24a"/>
+  <path d="M20 3c4 5 6 8 4.5 11.5c-.8 2-2.6 3-4.5 3s-3.7-1-4.5-3C14 10 16 8 20 3z" fill="#ff6a1a"/><path d="M20 8c2 3 3 5 2 7c-.5 1-1.2 1.5-2 1.5s-1.5-.5-2-1.5c-1-2 0-4 2-7z" fill="#ffd27a"/></svg>`;
+}
+
 function cardioHTML(day, L) {
   const items = day.items.map((it, i) => noteHTML(day, i)).join("");
-  return `<div class="cardio"><h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
+  return `<div class="cardio">${patrolSVG()}<h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
   <div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div>
   ${items}
   <div class="finish"><textarea id="dayNote" placeholder="Заметка">${esc(L?.dayNote || "")}</textarea>
@@ -383,8 +389,8 @@ function renderJourney() {
     const st = sk.weeks.find(x => x.n === w.n);
     const mons = w.days.map(d => {
       const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
-      const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : "КАР";
-      return `<button class="mon ${m ? "" : "cardio"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : ""}">${inner}</button>`;
+      const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : patrolSVG();
+      return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
     }).join("");
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
