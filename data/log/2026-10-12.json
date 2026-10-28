@@ -42,6 +42,7 @@
       "planWeight": "свой вес",
       "weight": "свой вес",
       "reps": [
+        8,
         5
       ],
       "note": ""
@@ -78,9 +79,9 @@
   "game": {
     "monster": "Гоблин-налётчик",
     "hp": 570,
-    "dealt": 240,
-    "overkill": 10,
+    "dealt": 270,
+    "overkill": 28,
     "killed": false
   },
-  "updatedAt": 1793198926664
+  "updatedAt": 1793198940132
 }
