@@ -44,6 +44,11 @@ export const DUNGEONS = {
   9: { name: "Драконьи горы", pool: ["dragon-drake", "dragon-wyvern", "dragon-drake"] },
   10: { name: "Тронный зал", pool: ["orc-warg-rider", "dragon-wyvern", "dragon-drake"] },
 };
+// Уровень монстра = уровень, который был бы у героя, идущего ровно по плану, ± место в стае (−1…+1).
+// Отстал — монстры выше тебя и дают больше опыта; обогнал — меньше. Так кривая сама подтягивается к плану.
+export const HP_PER_LVL = 0.2;      // каждый уровень монстра добавляет 20% к его здоровью и к цифрам урона по нему
+export const BOSS_HP = 6;           // в тестах мало подходов, поэтому у боссов отдельный множитель
+export const LVL_XP_STEP = 0.08, LVL_XP_MIN = 0.75, LVL_XP_MAX = 1.4;
 const MINIBOSS_BY_DATE = { "2026-11-13": "goblin-chief" };
 // Тесты по порядку: 20.11, 31.03, 03.04, а в конце года снова вождь орков и древний дракон.
 const BOSS_ORDER = ["boss-goblin-king", "boss-orc-warlord", "boss-ancient-dragon", "boss-orc-warlord", "boss-ancient-dragon"];
@@ -103,12 +108,48 @@ export function monsterFor(day) {
   if (REVENGE[day.date]) return MONSTERS[REVENGE[day.date].id];
   return planMonster(day);
 }
-function planMonster(day) {
+function packIndex(day) {
   const pool = dungeon(day.blockN).pool;
   const t = day.title.trim();
   let k = t.startsWith("А") ? 0 : t.startsWith("Б") ? 1 : 2;
   if (pool[2] === pool[0] && k === 2) k = day.week % 2;   // в горах всего два дракона — чередуем
-  return MONSTERS[pool[k]];
+  return k;
+}
+function planMonster(day) { return MONSTERS[dungeon(day.blockN).pool[packIndex(day)]]; }
+// Ожидаемый уровень героя на каждый день плана: всё сделано ровно по плану, без перков и бонусов.
+let EXP_LVL = null;
+function expectedLevel(day) {
+  if (!EXP_LVL) {
+    EXP_LVL = {}; let xp = 0;
+    const buff = new Set();
+    // Рост повторов по плану сам рождает рекорды — их тоже учитываем, иначе герой всегда будет впереди монстров.
+    const ideal = Object.fromEntries(DAYS.filter(d => !isCardio(d)).map(d => [d.date, { items: d.items.map(it => it.type === "ex" ? { reps: Array(parsePlan(it).sets).fill(parsePlan(it).target || 1), weight: it.weight || "" } : {}) }]));
+    const { prs } = computePRs(ideal);
+    for (const d of DAYS) {
+      const lvl = EXP_LVL[d.date] = levelFromXp(xp).level;
+      if (isCardio(d)) { xp += XP_CARDIO; continue; }
+      const hp = d.items.filter(i => i.type === "ex").reduce((a, i) => a + DMG * Math.min(parsePlan(i).sets, MAX_SETS_HP), 0);
+      const off = BOSS_BY_DATE[d.date] ? 3 : MINIBOSS_BY_DATE[d.date] ? 2 : isTavern(d) ? 0 : packIndex(d) - 1;
+      xp += (hp * XP_PER_HP + XP_KILL * (BOSS_BY_DATE[d.date] ? 3 : 1)) * levelXpMod(Math.max(1, lvl + off), lvl, { perks: [] }) + Object.keys(prs[d.date] || {}).length * XP_PR;
+      if (TAVERN_WEEKS.has(d.week - 1) && !buff.has(d.week)) { buff.add(d.week); xp += XP_TAVERN_BUFF; }
+    }
+  }
+  return EXP_LVL[day.date] || 1;
+}
+
+// Уровень монстра дня. Вернувшийся на реванш монстр озлоблен: на уровень выше, чем был.
+export function monsterLevel(day) {
+  if (isCardio(day)) return 0;
+  const base = expectedLevel(day);
+  if (BOSS_BY_DATE[day.date]) return base + 3;
+  if (MINIBOSS_BY_DATE[day.date]) return base + 2;
+  if (isTavern(day)) return base;
+  if (REVENGE[day.date]) return monsterLevel(DAY_BY_DATE[REVENGE[day.date].from]) + REVENGE[day.date].n;
+  return Math.max(1, base - 1 + packIndex(day));
+}
+export function hpMult(day) {
+  if (isCardio(day)) return 1;
+  return (1 + HP_PER_LVL * (monsterLevel(day) - 1)) * (BOSS_BY_DATE[day.date] ? BOSS_HP : 1);
 }
 // ---------- реванш ----------
 // Монстр, который сбежал раненым, приходит вместо монстра следующей обычной тренировки (не босс, не таверна,
@@ -121,15 +162,17 @@ export function fledOn(day, log, today) {
   const b = battle(day, log);
   return !b.killed && b.dealt > 0 && (!!log.finished || day.on < today);
 }
-export function computeRevenge(logs, today) {
+export function computeRevenge(logs, today, meta = {}) {
   REVENGE = {};
   const days = DAYS.filter(d => !isCardio(d) && !isOptional(d)).sort((a, b) => a.on < b.on ? -1 : a.on > b.on ? 1 : 0);
   days.forEach((d, k) => {
     if (BOSS_BY_DATE[d.date] || isTavern(d) || !fledOn(d, logs[d.date], today)) return;
-    if (REVENGE[d.date]) return;                      // вернувшийся монстр сбежал снова — больше не придёт
+    const bd = buildAt(meta, whenOf(d, logs[d.date]));
+    const prev = REVENGE[d.date];
+    if (prev && prev.n >= (hasPerk(bd, "headhunter") ? 2 : 1)) return;   // вернувшийся монстр сбежал снова — больше не придёт
     const next = days.slice(k + 1).find(x => x.on > d.on);
-    if (!next || !regular(next) || daysBetween(d.on, next.on) > REVENGE_WINDOW || logs[next.date]?.skipped) return;
-    REVENGE[next.date] = { id: monsterFor(d).id, from: d.date };
+    if (!next || !regular(next) || daysBetween(d.on, next.on) > REVENGE_WINDOW + bd.stats.wil || logs[next.date]?.skipped) return;
+    REVENGE[next.date] = { id: monsterFor(d).id, from: prev ? prev.from : d.date, n: prev ? prev.n + 1 : 1 };
   });
   return REVENGE;
 }
@@ -150,11 +193,12 @@ export function dungeon(n) { return DUNGEONS[n] || DUNGEONS[((n - 1) % 4) + 1] |
 export function battle(day, log) {
   const exs = [];
   let hp = 0, dealt = 0, over = 0, setsDone = 0;
+  const mult = hpMult(day);
   day.items.forEach((it, i) => {
     if (it.type !== "ex") return;
     const pp = parsePlan(it);
     const reps = (log?.items?.[i]?.reps || []);
-    const exHp = DMG * Math.min(pp.sets, MAX_SETS_HP), per = exHp / pp.sets;
+    const exHp = DMG * Math.min(pp.sets, MAX_SETS_HP) * mult, per = exHp / pp.sets;
     let d = 0, o = 0;
     reps.forEach((r, k) => {
       if (r == null || r === "") return;
@@ -165,12 +209,12 @@ export function battle(day, log) {
       else o += per * frac;
     });
     hp += exHp; dealt += d; over += o;
-    exs.push({ i, pp, per, dealt: d, over: o, hp: exHp });
+    exs.push({ i, pp, per, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
   });
-  dealt = Math.round(dealt); over = Math.round(over);
+  hp = Math.round(hp); dealt = Math.round(dealt); over = Math.round(over);
   const killed = hp > 0 && dealt >= hp - 0.5;
   const overXp = Math.round(Math.min(over, hp * OVERKILL_CAP));
-  return { hp, dealt, left: Math.max(0, hp - dealt), over, overXp, killed, exs, setsDone, pct: hp ? dealt / hp : 0 };
+  return { hp, dealt, left: Math.max(0, hp - dealt), over, overXp, killed, exs, setsDone, pct: hp ? dealt / hp : 0, mult, lvl: monsterLevel(day) };
 }
 
 // ---------- рекорды ----------
@@ -225,9 +269,62 @@ export function computePRs(logs) {
   return { prs, list, bestReps, bestKg };
 }
 
+// ---------- характеристики и перки ----------
+// Очки: 1 за каждый уровень после первого и 1 за каждого поверженного босса. Каждые 5 очков в характеристике
+// открывают выбор из двух перков. Ни один бонус не уменьшает объём, нужный для убийства: убить = выполнить план.
+// meta.build = { log: [{ at: "<дата>", stats: {str,…}, perks: [id] }], respecs: [номер блока] }.
+// Билд действует на бои начиная с даты записи — прошлые бои не пересчитываются, сброс не меняет старый опыт.
+export const STATS = [
+  { id: "str", name: "Сила", per: "+4% опыта за урон в упражнениях с весом" },
+  { id: "end", name: "Выносливость", per: "+4% опыта за урон без веса, EMOM и круги, +5% за патрули" },
+  { id: "agi", name: "Ловкость", per: "+8% опыта за криты (личные рекорды)" },
+  { id: "wil", name: "Воля", per: "+1 день к окну реванша, +5% опыта за реванш" },
+  { id: "lck", name: "Удача", per: "+3% шанс находки после боя (+40 опыта)" },
+];
+export const PERK_STEP = 5, FIND_XP = 40;
+export const PERKS = {
+  str: [[{ id: "crusher", name: "Сокрушитель", desc: "Опыт за убийство +30%" }, { id: "executioner", name: "Палач", desc: "Опыт за убийство босса ×1,5" }],
+        [{ id: "titan", name: "Титан", desc: "Рекорд с новым весом даёт тройной опыт крита" }, { id: "breaker", name: "Раскол брони", desc: "Ещё +20% опыта за урон в упражнениях с весом" }]],
+  end: [[{ id: "marathon", name: "Марафонец", desc: "Патрули дают двойной опыт" }, { id: "secondwind", name: "Второе дыхание", desc: "Бодрость после таверны ×3" }],
+        [{ id: "rhythm", name: "Железный ритм", desc: "+100 опыта за неделю, где все обязательные монстры убиты" }, { id: "veteran", name: "Ветеран походов", desc: "+300 опыта за каждое зачищенное подземелье (80% монстров блока)" }]],
+  agi: [[{ id: "combo", name: "Серия ударов", desc: "Каждый следующий крит в бою даёт двойной опыт" }, { id: "precise", name: "Точный удар", desc: "Убийство с критом: +40 опыта" }],
+        [{ id: "giant", name: "Убийца гигантов", desc: "Монстры ниже тебя не режут опыт, выше — дают до +80%" }, { id: "blademaster", name: "Мастер клинка", desc: "Весь опыт за криты ×2" }]],
+  wil: [[{ id: "stoic", name: "Стойкость", desc: "+1 заморозка серии" }, { id: "grudge", name: "Злопамятный", desc: "Опыт за реванш ×2" }],
+        [{ id: "unbroken", name: "Несломленный", desc: "Ещё +1 заморозка серии" }, { id: "headhunter", name: "Охотник за головами", desc: "Сбежавший монстр может вернуться дважды" }]],
+  lck: [[{ id: "seeker", name: "Кладоискатель", desc: "Шанс находки ×1,5" }, { id: "goldvein", name: "Золотая жила", desc: "Находки дают двойной опыт" }],
+        [{ id: "coin", name: "Счастливая монета", desc: "Первый бой каждой недели — гарантированная находка" }, { id: "trophy", name: "Трофейщик", desc: "Босс всегда оставляет тройную находку" }]],
+};
+export const PERK_BY_ID = Object.fromEntries(Object.entries(PERKS).flatMap(([st, tiers]) => tiers.flatMap((pair, t) => pair.map(p => [p.id, { ...p, stat: st, tier: t }]))));
+const EMPTY_BUILD = () => ({ at: "", stats: { str: 0, end: 0, agi: 0, wil: 0, lck: 0 }, perks: [] });
+export function buildAt(meta, iso) {
+  const log = meta?.build?.log || [];
+  let b = null;
+  for (const e of log) if (e.at <= iso) b = e;
+  return b ? { ...EMPTY_BUILD(), ...b, stats: { ...EMPTY_BUILD().stats, ...b.stats } } : EMPTY_BUILD();
+}
+export function currentBuild(meta) { return buildAt(meta, "9999-12-31"); }
+export function hasPerk(b, id) { return b.perks.includes(id); }
+export function perkSlots(b, stat) { return Math.min(PERKS[stat].length, Math.floor(b.stats[stat] / PERK_STEP)); }
+export function freezeLimit(meta) { const b = currentBuild(meta); return FREEZES + hasPerk(b, "stoic") + hasPerk(b, "unbroken"); }
+export function canRespec(meta, today) { return !(meta?.build?.respecs || []).includes(weekOf(today).block); }
+// Дата, когда бой был на самом деле: от неё зависит, какой билд действовал.
+export function whenOf(day, L) { return L?.performedOn || day.on; }
+// Упражнение «с весом»: указан вес в кг (гиря, пояс), но не махи/круги/скакалка — это работа на выносливость.
+export function isHeavy(it, li) {
+  if (parsePlan(it).emom || /круг|скакалк|мах/i.test(it.name)) return false;
+  return kg(li?.weight ?? it.weight) > 0;
+}
+function hash01(str) { let h = 2166136261; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return ((h >>> 0) % 10000) / 10000; }
+export function levelXpMod(mLvl, hLvl, b) {
+  const diff = mLvl - hLvl;
+  if (hasPerk(b, "giant")) return Math.min(1.8, Math.max(1, 1 + 0.1 * diff));
+  return Math.min(LVL_XP_MAX, Math.max(LVL_XP_MIN, 1 + LVL_XP_STEP * diff));
+}
+
 // ---------- опыт и уровни ----------
 export const TITLES = ["Странник", "Оруженосец", "Наёмник", "Страж", "Рыцарь", "Ветеран", "Чемпион", "Паладин", "Герой", "Легенда"];
-export function xpForLevel(l) { return 200 + 100 * (l - 1); }
+// Цена уровня растёт: за год ровно по плану выходит примерно 22-й уровень.
+export function xpForLevel(l) { return 600 + 150 * (l - 1); }
 export function levelFromXp(xp) {
   let l = 1, rest = xp;
   while (rest >= xpForLevel(l)) { rest -= xpForLevel(l); l++; }
@@ -271,31 +368,77 @@ export function streak(logs, meta, today) {
 // ---------- сводка героя ----------
 export function summarize(logs, meta, today) {
   const { prs, list: prList } = computePRs(logs);
-  computeRevenge(logs, today);
-  let revenges = 0;
+  computeRevenge(logs, today, meta);
+  let revenges = 0, finds = 0;
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
   const killed = {}, bossKills = [], perDay = {};
-  const tavernBuffWeeks = new Set();
+  const tavernBuffWeeks = new Set(), coinWeeks = new Set();
   for (const d of DAYS) {
     const L = logs[d.date]; if (!L) continue;
+    const bd = buildAt(meta, whenOf(d, L)), st = bd.stats;
     if (isCardio(d)) {
-      if (L.items?.some(x => x.done) || L.finished) { xp += XP_CARDIO; cardio++; perDay[d.date] = { xp: XP_CARDIO }; }
+      if (L.items?.some(x => x.done) || L.finished) {
+        const cx = Math.round(XP_CARDIO * (1 + 0.05 * st.end) * (hasPerk(bd, "marathon") ? 2 : 1));
+        xp += cx; cardio++; perDay[d.date] = { xp: cx };
+      }
       continue;
     }
     const b = battle(d, L), m = monsterFor(d);
-    const nPR = Object.keys(prs[d.date] || {}).length;
-    let dx = Math.round((b.dealt + b.overXp) * XP_PER_HP) + nPR * XP_PR;
-    if (b.killed) { dx += XP_KILL * (m?.boss ? 3 : 1); kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++; if (REVENGE[d.date]) { dx += XP_REVENGE; revenges++; } }
+    const hLvl = levelFromXp(xp).level, mod = levelXpMod(b.lvl, hLvl, bd);
+    // Опыт за урон считается от плана, а не от раздутых цифр здоровья: уровень монстра влияет только через mod.
+    const heavyHp = b.exs.reduce((a, e) => a + (e.heavy ? e.dealt + e.over : 0), 0), allHp = b.exs.reduce((a, e) => a + e.dealt + e.over, 0);
+    const heavyShare = allHp ? heavyHp / allHp : 0;
+    const statMul = 1 + heavyShare * (0.04 * st.str + (hasPerk(bd, "breaker") ? 0.2 : 0)) + (1 - heavyShare) * 0.04 * st.end;
+    let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
+    const dayPRs = Object.entries(prs[d.date] || {});
+    const nPR = dayPRs.length;
+    dayPRs.forEach(([, pr], k) => {
+      let x = XP_PR * (1 + 0.08 * st.agi);
+      if (pr.kind === "kg" && hasPerk(bd, "titan")) x *= 3;
+      if (k > 0 && hasPerk(bd, "combo")) x *= 2;
+      if (hasPerk(bd, "blademaster")) x *= 2;
+      dx += Math.round(x);
+    });
+    let find = 0;
+    if (b.killed) {
+      let kx = XP_KILL * (m?.boss ? 3 : 1) * (hasPerk(bd, "crusher") ? 1.3 : 1) * (m?.boss && hasPerk(bd, "executioner") ? 1.5 : 1);
+      if (nPR && hasPerk(bd, "precise")) kx += 40;
+      dx += Math.round(kx * mod);
+      kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++;
+      if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)); revenges++; }
+      if (m?.boss && hasPerk(bd, "trophy")) find = 3;
+    }
     else if (L.finished && b.dealt > 0) fled++;
+    // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
+    if (b.dealt > 0 && !find) {
+      if (hasPerk(bd, "coin") && !coinWeeks.has(d.week)) find = 1;
+      else if (hash01(d.date) < 0.03 * st.lck * (hasPerk(bd, "seeker") ? 1.5 : 1)) find = 1;
+    }
+    if (b.dealt > 0) coinWeeks.add(d.week);
+    if (find) { finds++; dx += FIND_XP * find * (hasPerk(bd, "goldvein") ? 2 : 1); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
-    if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF; }
+    if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 3 : 1); }
     if (L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22) nightOwl++;
-    xp += dx; perDay[d.date] = { xp: dx, battle: b, prs: nPR };
+    xp += dx; perDay[d.date] = { xp: dx, battle: b, prs: nPR, find, mod, heroLvl: hLvl };
+  }
+  // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
+  for (const w of WEEKS) {
+    const ds = w.days.filter(regular);
+    if (!ds.length || !hasPerk(buildAt(meta, w.onTo), "rhythm")) continue;
+    if (ds.every(d => battle(d, logs[d.date]).killed)) { xp += 100; (perDay[ds[ds.length - 1].date] ||= { xp: 0 }).xp += 100; }
+  }
+  const blocks = [...new Set(DAYS.map(d => d.blockN))];
+  for (const n of blocks) {
+    const last = DAYS.filter(d => d.blockN === n).pop();
+    if (hasPerk(buildAt(meta, last.on), "veteran") && dungeonCleared(n, logs)) xp += 300;
   }
   const lv = levelFromXp(xp);
   const sk = streak(logs, meta, today);
-  const ach = achievements({ revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks });
-  return { xp, ...lv, revenges, kills, fled, cardio, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach };
+  const points = lv.level - 1 + bossKills.length;
+  const build = currentBuild(meta);
+  const spent = Object.values(build.stats).reduce((a, b) => a + b, 0);
+  const ach = achievements({ revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build });
+  return { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, build };
 }
 
 function dungeonCleared(n, logs) {
@@ -335,5 +478,7 @@ export function achievements(s) {
     A("bossAll", "Год побед", "Победить всех пятерых боссов тестов", s.bossKills.length >= 5),
     A("lvl5", "Закалённый", "Достичь 5 уровня", s.level >= 5),
     A("lvl10", "Живая легенда", "Достичь 10 уровня", s.level >= 10),
+    A("perk1", "Свой путь", "Открыть первый перк", s.build.perks.length >= 1),
+    A("find5", "Мародёр", "Сделать 5 находок", s.finds >= 5),
   ];
 }

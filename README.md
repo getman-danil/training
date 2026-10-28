@@ -27,6 +27,7 @@
 ```
 data/log/2026-10-28.json   — одна тренировка (дата из плана)
 data/meta.json             — заморозки серии (freezes) и переносы тренировок (shifts: at = дата по плану, days = на сколько дней, scope = one | all)
+                             и билд героя (build.log = [{at: дата, stats: {str,end,agi,wil,lck}, perks: [id]}], build.respecs = блоки, где был сброс)
 ```
 
 Формат записи тренировки:

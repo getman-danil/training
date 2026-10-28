@@ -36,12 +36,13 @@ function commit(day, L) {
   const before = SUM?.level;
   touchLog(L);
   recompute(); renderTop();
-  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title}`);
+  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +${SUM.level - before} очко характеристик`);
 }
 
 // ---------- верхняя панель ----------
 function renderTop() {
   $("#lvl").textContent = SUM.level;
+  $("#lvlBtn").classList.toggle("pts", SUM.free > 0);
   $("#xpTxt").textContent = `${SUM.title} · ${SUM.into} / ${SUM.need}`;
   $("#xpBar").style.width = (SUM.into / SUM.need * 100).toFixed(1) + "%";
 }
@@ -119,7 +120,7 @@ function stageHTML(day) {
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
     <div class="flash"></div><div class="dmg" id="dmg"></div>
     <div class="art ${m.placeholder && !m.tavern ? "shadow" : ""}" id="art">${art}</div>
-    <div class="mname"><span>${esc(m.name)}</span><small>${tag}</small></div>
+    <div class="mname"><span>${esc(m.name)}</span><small>${tag ? tag + " · " : ""}УР. ${G.monsterLevel(day)}</small></div>
     <div class="hp"><div class="bar"><u id="hpU"></u><i id="hpI"></i></div><div class="nums"><span class="num" id="hpV"></span><span id="hpS">здоровье</span></div></div>
     <div id="bannerHost"></div>
   </div>`;
@@ -147,9 +148,10 @@ function updateStage(animate, info) {
   art.classList.toggle("fled", !b.killed && (!!L?.skipped || (!!L?.finished && b.dealt > 0)));
   const host = $("#bannerHost");
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
+  const pd = SUM.perDay[day.date], found = pd?.find ? ` · находка${pd.find > 1 ? " ×" + pd.find : ""}` : "";
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${SUM.perDay[day.date]?.xp || 0} опыта${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -373,7 +375,7 @@ $("#sheetOk").onclick = () => {
 // ПОХОД
 // =====================================================================
 function renderJourney() {
-  const t = todayISO(), sk = SUM.streak, left = G.FREEZES - (S.meta.freezes || []).length;
+  const t = todayISO(), sk = SUM.streak, left = Math.max(0, G.freezeLimit(S.meta) - (S.meta.freezes || []).length);
   const bar = sk.weeks.map(w => `<i class="${w.status} ${w.tavern ? "tavern" : ""}" title="Неделя ${w.n}"></i>`).join("");
   let h = `<p class="lead">Поход</p><p class="sub">${G.WEEKS.length} недель · ${fmt(G.WEEKS[0].onFrom)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].onTo)}.${G.WEEKS[G.WEEKS.length - 1].onTo.slice(0, 4)}</p>
   <div class="weeksbar" style="--n:${G.WEEKS.length}">${bar}</div>
@@ -469,6 +471,7 @@ function renderHero() {
   let h = `<p class="lead">${esc(s.title)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}.</p>
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
+  ${buildHTML(s)}
   <h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`).join("")}</div>
   <h2 class="sec">БЕСТИАРИЙ</h2><div class="beasts">`;
   for (const m of Object.values(G.MONSTERS)) {
@@ -479,12 +482,71 @@ function renderHero() {
   h += `</div><h2 class="sec">ТИТУЛЫ</h2><ul class="list">${G.TITLES.map((t, i) => `<li><span>${esc(t)}</span><span>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</span></li>`).join("")}</ul>
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
+  <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
+  <p>Очки характеристик: 1 за уровень и 1 за каждого босса. Каждые ${G.PERK_STEP} очков в характеристике открывают выбор из двух перков. Билд действует на бои с того дня, как ты его поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
   main.innerHTML = h;
 }
+
+// ---------- билд: характеристики и перки ----------
+function buildHTML(s) {
+  const b = s.build, prev = prevBuild();
+  let h = `<h2 class="sec">ХАРАКТЕРИСТИКИ</h2><p class="sub">Свободных очков: <b class="gold">${s.free}</b> из ${s.points} (уровни + боссы).${s.free > 0 ? " Вложи их — бонусы действуют с сегодняшних боёв." : ""}</p><div class="build">`;
+  for (const st of G.STATS) {
+    const v = b.stats[st.id], canDown = v > prev.stats[st.id], canUp = s.free > 0;
+    h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${v}</span><button data-st="${st.id}" data-d="1" ${canUp ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
+      <small>${esc(st.per)} за очко</small><div class="perks">`;
+    G.PERKS[st.id].forEach((pair, t) => {
+      const open = G.perkSlots(b, st.id) > t, chosen = pair.find(p => b.perks.includes(p.id)), locked = chosen && prev.perks.includes(chosen.id);
+      h += `<div class="tier"><span class="need">${(t + 1) * G.PERK_STEP}</span>${pair.map(p => {
+        const cls = b.perks.includes(p.id) ? "on" : !open || locked ? "off" : "pick";
+        return `<button class="perk ${cls}" data-perk="${p.id}" ${cls === "pick" || (cls === "on" && !locked) ? "" : "disabled"}><b>${esc(p.name)}</b><small>${esc(p.desc)}</small></button>`;
+      }).join("")}</div>`;
+    });
+    h += `</div></div>`;
+  }
+  const spent = s.spent, can = G.canRespec(S.meta, todayISO());
+  h += `</div>${spent ? (can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ПЕРКИ</button><p class="hint">Сброс — один раз за блок. Уже полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Очки, вложенные сегодня, можно вернуть кнопкой «−».</p>`) : ""}`;
+  return h;
+}
+// Билд, который действовал до сегодняшнего дня: сегодняшние изменения можно откатить без сброса.
+// После сброса сегодня откатывать некуда — пол становится нулевым.
+function prevBuild() {
+  const log = S.meta.build?.log || [], last = log[log.length - 1];
+  return last?.at === todayISO() && last.respec ? G.buildAt({}, "") : G.buildAt(S.meta, G.addDays(todayISO(), -1));
+}
+function editBuild(fn) {
+  const t = todayISO(), bm = S.meta.build ||= { log: [], respecs: [] };
+  let e = bm.log[bm.log.length - 1];
+  if (!e || e.at !== t) { const c = G.currentBuild(S.meta); e = { at: t, stats: { ...c.stats }, perks: [...c.perks] }; bm.log.push(e); }
+  fn(e, bm);
+  // Перк держится, пока в характеристике хватает очков на его ступень.
+  e.perks = e.perks.filter(id => { const p = G.PERK_BY_ID[id]; return p && Math.floor(e.stats[p.stat] / G.PERK_STEP) > p.tier; });
+  touchMeta(); recompute(); renderTop(); renderHero();
+}
+main.addEventListener("click", e => {
+  if (route().tab !== "hero") return;
+  const st = e.target.closest("[data-st]");
+  if (st) {
+    const d = +st.dataset.d;
+    if (d > 0 && SUM.free <= 0) return;
+    editBuild(b => { b.stats[st.dataset.st] = Math.max(prevBuild().stats[st.dataset.st], b.stats[st.dataset.st] + d); });
+    return;
+  }
+  const pk = e.target.closest("[data-perk]");
+  if (pk) {
+    const p = G.PERK_BY_ID[pk.dataset.perk], pair = G.PERKS[p.stat][p.tier].map(x => x.id);
+    editBuild(b => { const had = b.perks.includes(p.id); b.perks = b.perks.filter(id => !pair.includes(id)); if (!had) b.perks.push(p.id); });
+    return;
+  }
+  if (e.target.closest("#respec")) {
+    if (!confirm("Сбросить все очки и перки? В этом блоке сброс больше не будет доступен.")) return;
+    editBuild((b, bm) => { for (const k in b.stats) b.stats[k] = 0; b.perks = []; b.respec = true; (bm.respecs ||= []).push(G.weekOf(todayISO()).block); });
+  }
+});
 
 // =====================================================================
 // НАСТРОЙКИ
