@@ -54,7 +54,11 @@
       "plan": "3×10 на руку",
       "planWeight": "16 кг",
       "weight": "16 кг",
-      "reps": [],
+      "reps": [
+        12,
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -80,9 +84,9 @@
   "game": {
     "monster": "Гоблин-налётчик",
     "hp": 570,
-    "dealt": 300,
-    "overkill": 82,
+    "dealt": 390,
+    "overkill": 88,
     "killed": false
   },
-  "updatedAt": 1793198951853
+  "updatedAt": 1793198970541
 }
