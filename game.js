@@ -275,13 +275,13 @@ export function computePRs(logs) {
 // meta.build = { log: [{ at: "<дата>", stats: {str,…}, perks: [id] }], respecs: [номер блока] }.
 // Билд действует на бои начиная с даты записи — прошлые бои не пересчитываются, сброс не меняет старый опыт.
 export const STATS = [
-  { id: "str", name: "Сила", per: "+4% опыта за урон в упражнениях с весом" },
-  { id: "end", name: "Выносливость", per: "+4% опыта за урон без веса, EMOM и круги, +5% за патрули" },
-  { id: "agi", name: "Ловкость", per: "+8% опыта за криты (личные рекорды)" },
-  { id: "wil", name: "Воля", per: "+1 день к окну реванша, +5% опыта за реванш" },
-  { id: "lck", name: "Удача", per: "+3% шанс находки после боя (+40 опыта)" },
+  { id: "str", name: "Сила", per: "+6% опыта за урон в упражнениях с весом" },
+  { id: "end", name: "Выносливость", per: "+5% опыта за урон без веса, EMOM и круги, +8% за патрули" },
+  { id: "agi", name: "Ловкость", per: "+4% опыта за криты (личные рекорды)" },
+  { id: "wil", name: "Воля", per: "+3,5% опыта за убийство, +1 день к окну реванша, +5% за реванш" },
+  { id: "lck", name: "Удача", per: "+6% шанс находки после боя (+60 опыта)" },
 ];
-export const PERK_STEP = 5, FIND_XP = 40;
+export const PERK_STEP = 5, FIND_XP = 60, FIND_CHANCE = 0.06, FIND_MAX = 0.6;
 export const PERKS = {
   str: [[{ id: "crusher", name: "Сокрушитель", desc: "Опыт за убийство +30%" }, { id: "executioner", name: "Палач", desc: "Опыт за убийство босса ×1,5" }],
         [{ id: "titan", name: "Титан", desc: "Рекорд с новым весом даёт тройной опыт крита" }, { id: "breaker", name: "Раскол брони", desc: "Ещё +20% опыта за урон в упражнениях с весом" }]],
@@ -378,7 +378,7 @@ export function summarize(logs, meta, today) {
     const bd = buildAt(meta, whenOf(d, L)), st = bd.stats;
     if (isCardio(d)) {
       if (L.items?.some(x => x.done) || L.finished) {
-        const cx = Math.round(XP_CARDIO * (1 + 0.05 * st.end) * (hasPerk(bd, "marathon") ? 2 : 1));
+        const cx = Math.round(XP_CARDIO * (1 + 0.08 * st.end) * (hasPerk(bd, "marathon") ? 2 : 1));
         xp += cx; cardio++; perDay[d.date] = { xp: cx };
       }
       continue;
@@ -388,12 +388,12 @@ export function summarize(logs, meta, today) {
     // Опыт за урон считается от плана, а не от раздутых цифр здоровья: уровень монстра влияет только через mod.
     const heavyHp = b.exs.reduce((a, e) => a + (e.heavy ? e.dealt + e.over : 0), 0), allHp = b.exs.reduce((a, e) => a + e.dealt + e.over, 0);
     const heavyShare = allHp ? heavyHp / allHp : 0;
-    const statMul = 1 + heavyShare * (0.04 * st.str + (hasPerk(bd, "breaker") ? 0.2 : 0)) + (1 - heavyShare) * 0.04 * st.end;
+    const statMul = 1 + heavyShare * (0.06 * st.str + (hasPerk(bd, "breaker") ? 0.2 : 0)) + (1 - heavyShare) * 0.05 * st.end;
     let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
     const dayPRs = Object.entries(prs[d.date] || {});
     const nPR = dayPRs.length;
     dayPRs.forEach(([, pr], k) => {
-      let x = XP_PR * (1 + 0.08 * st.agi);
+      let x = XP_PR * (1 + 0.04 * st.agi);
       if (pr.kind === "kg" && hasPerk(bd, "titan")) x *= 3;
       if (k > 0 && hasPerk(bd, "combo")) x *= 2;
       if (hasPerk(bd, "blademaster")) x *= 2;
@@ -401,7 +401,7 @@ export function summarize(logs, meta, today) {
     });
     let find = 0;
     if (b.killed) {
-      let kx = XP_KILL * (m?.boss ? 3 : 1) * (hasPerk(bd, "crusher") ? 1.3 : 1) * (m?.boss && hasPerk(bd, "executioner") ? 1.5 : 1);
+      let kx = XP_KILL * (m?.boss ? 3 : 1) * (hasPerk(bd, "crusher") ? 1.3 : 1) * (m?.boss && hasPerk(bd, "executioner") ? 1.5 : 1) * (1 + 0.035 * st.wil);
       if (nPR && hasPerk(bd, "precise")) kx += 40;
       dx += Math.round(kx * mod);
       kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++;
@@ -412,7 +412,7 @@ export function summarize(logs, meta, today) {
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
     if (b.dealt > 0 && !find) {
       if (hasPerk(bd, "coin") && !coinWeeks.has(d.week)) find = 1;
-      else if (hash01(d.date) < 0.03 * st.lck * (hasPerk(bd, "seeker") ? 1.5 : 1)) find = 1;
+      else if (hash01(d.date) < Math.min(FIND_MAX, FIND_CHANCE * st.lck * (hasPerk(bd, "seeker") ? 1.5 : 1))) find = 1;
     }
     if (b.dealt > 0) coinWeeks.add(d.week);
     if (find) { finds++; dx += FIND_XP * find * (hasPerk(bd, "goldvein") ? 2 : 1); }
