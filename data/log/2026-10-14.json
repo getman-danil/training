@@ -17,7 +17,7 @@
       "reps": [
         10,
         10,
-        5,
+        8,
         5
       ],
       "note": ""
@@ -73,8 +73,8 @@
     "monster": "Гоблин-лучник",
     "hp": 570,
     "dealt": 120,
-    "overkill": 60,
+    "overkill": 78,
     "killed": false
   },
-  "updatedAt": 1793199075603
+  "updatedAt": 1793199364020
 }
