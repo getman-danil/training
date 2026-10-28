@@ -158,27 +158,40 @@ export function kg(w) {
 }
 
 // Проходит по журналу в хронологическом порядке и отмечает подходы-рекорды.
-// Рекорд = больше повторов, чем раньше, с тем же весом, или впервые больший вес в этом упражнении.
+// Сравнение идёт с лучшим результатом до этого дня: подход, побивший прошлые тренировки, — крит.
+// В список рекордов от одного упражнения за день попадает одна строка — с лучшим подходом дня.
 export function computePRs(logs) {
   const bestReps = {}, bestKg = {}, prs = {}, list = [];
   const dates = Object.keys(logs).filter(d => DAY_BY_DATE[d]).sort();
   for (const date of dates) {
     const day = DAY_BY_DATE[date], L = logs[date];
+    const updates = [];
     day.items.forEach((it, i) => {
       if (it.type !== "ex") return;
       const li = L.items?.[i]; if (!li) return;
       const name = normName(it.name), w = (li.weight ?? it.weight ?? "").trim().toLowerCase();
       const key = name + "|" + w, wk = kg(w);
+      const preReps = bestReps[key], preKg = bestKg[name];
+      const reps = (li.reps || []).map(Number).filter(r => r > 0);
+      if (!reps.length) return;
+      const newKg = preKg != null && wk > preKg;
+      let dayBest = 0;
       (li.reps || []).forEach((r, k) => {
         r = +r; if (!(r > 0)) return;
-        let pr = null;
-        if (bestKg[name] != null && wk > bestKg[name]) pr = { kind: "kg", text: `${li.weight || it.weight}: новый вес` };
-        else if (bestReps[key] != null && r > bestReps[key]) pr = { kind: "reps", text: `${r} повт. (было ${bestReps[key]})` };
-        if (pr) { (prs[date] ||= {})[i + ":" + k] = pr; list.push({ date, name: it.name, ...pr }); }
-        bestReps[key] = Math.max(bestReps[key] ?? 0, r);
-        bestKg[name] = Math.max(bestKg[name] ?? -Infinity, wk);
+        if (newKg || (preReps != null && r > preReps)) {
+          (prs[date] ||= {})[i + ":" + k] = newKg ? { kind: "kg" } : { kind: "reps" };
+          dayBest = Math.max(dayBest, r);
+        }
       });
+      if (dayBest) list.push(newKg
+        ? { date, name: it.name, kind: "kg", text: `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` }
+        : { date, name: it.name, kind: "reps", text: `${dayBest} повт. (было ${preReps})` });
+      updates.push([key, name, Math.max(...reps), wk]);
     });
+    for (const [key, name, r, wk] of updates) {
+      bestReps[key] = Math.max(bestReps[key] ?? 0, r);
+      bestKg[name] = Math.max(bestKg[name] ?? -Infinity, wk);
+    }
   }
   return { prs, list, bestReps, bestKg };
 }
