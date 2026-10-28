@@ -12,7 +12,7 @@ const DOW = { "Понедельник": "пн", "Вторник": "вт", "Ср�
 // День, в который тренировка была на самом деле, может отличаться от плана; запись хранится под датой плана (performedOn — фактический).
 
 let SUM = null;
-function recompute() { SUM = G.summarize(S.logs, S.meta, todayISO()); return SUM; }
+function recompute() { G.applyShifts(S.meta.shifts || []); SUM = G.summarize(S.logs, S.meta, todayISO()); return SUM; }
 
 // ---------- журнал дня ----------
 function getLog(day, create) {
@@ -32,7 +32,7 @@ function commit(day, L) {
   const b = G.battle(day, L), m = G.monsterFor(day);
   L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed } : { patrol: true };
   // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
-  if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.date < todayISO() ? day.date : todayISO();
+  if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.on < todayISO() ? day.on : todayISO();
   const before = SUM?.level;
   touchLog(L);
   recompute(); renderTop();
@@ -65,9 +65,9 @@ function route() {
 }
 function defaultDate() {
   const t = todayISO();
-  if (G.DAY_BY_DATE[t]) return t;
-  const next = G.DAYS.find(d => d.date >= t);
-  return (next || G.DAYS[G.DAYS.length - 1]).date;
+  const byOn = [...G.DAYS].sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0));
+  const next = byOn.find(d => d.on >= t);
+  return (next || byOn[byOn.length - 1]).date;
 }
 addEventListener("hashchange", () => { closeSheet(); render(); scrollTo(0, 0); });
 
@@ -99,7 +99,7 @@ function renderBattle(date) {
   cur = { day };
   const w = G.WEEKS.find(x => x.n === day.week), wi = G.WEEKS.indexOf(w);
   const t = todayISO();
-  const days = w.days.map(d => `<button class="day ${d.date === t ? "today" : ""} ${dayState(d)}" data-go="${d.date}" aria-current="${d.date === date}">${DOW[d.dow] || d.dow.slice(0, 2)}<small>${fmt(d.date)}</small></button>`).join("");
+  const days = w.days.map(d => `<button class="day ${d.on === t ? "today" : ""} ${dayState(d)}" data-go="${d.date}" aria-current="${d.date === date}">${DOW[G.dowOf(d.on)]}<small>${fmt(d.on)}</small></button>`).join("");
   const loc = `${G.locationFor(day).toUpperCase()} · НЕДЕЛЯ ${day.week}`;
   let html = `<div class="loc">${esc(loc)}</div>
   <div class="daynav"><button class="arr" data-wk="${wi - 1}" ${wi === 0 ? "disabled" : ""} aria-label="Прошлая неделя">‹</button><div class="days">${days}</div><button class="arr" data-wk="${wi + 1}" ${wi === G.WEEKS.length - 1 ? "disabled" : ""} aria-label="Следующая неделя">›</button></div>`;
@@ -161,7 +161,7 @@ function updateStage(animate, info) {
 function exercisesHTML(day) {
   const L = S.logs[day.date];
   const b = G.battle(day, L);
-  let h = `<div class="dayhead"><h1>${esc(day.title)}</h1><p>${esc(day.dow)}, ${fmt(day.date)}${weekNote(day)}</p></div><div id="exlist">`;
+  let h = `<div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div><div id="exlist">`;
   day.items.forEach((it, i) => { h += it.type === "ex" ? exHTML(day, i, b) : noteHTML(day, i); });
   h += `</div><div class="finish">
     <textarea id="dayNote" placeholder="Заметка о тренировке: самочувствие, сон, что было тяжело">${esc(L?.dayNote || "")}</textarea>
@@ -184,8 +184,15 @@ function finishInner(day, L, started, finishTxt, reopenTxt) {
   if (L?.skipped) return `<div class="hint">Тренировка пропущена: опыта за неё нет, других штрафов нет. Если из-за пропуска неделя не набрала нужное число боёв, её можно заморозить в «Походе», чтобы серия не прервалась.</div><button class="act" id="unskip">ОТМЕНИТЬ ПРОПУСК</button>`;
   if (L?.finished) return `<button class="act" id="reopen">${reopenTxt}</button>${date}<div class="hint">Записи можно править.</div>`;
   return `<button class="act gold" id="finish">${finishTxt}</button>${date}
-    ${started ? `<div class="hint">Тап по клетке — подход по плану. Повторный тап — поправить число.</div>` : `<button class="act" id="skip">ПРОПУСТИЛ ТРЕНИРОВКУ</button>`}`;
+    ${started ? `<div class="hint">Тап по клетке — подход по плану. Повторный тап — поправить число.</div>` : `<button class="act" id="skip">ПРОПУСТИЛ ТРЕНИРОВКУ</button>
+    <details class="move"><summary class="act">ПЕРЕНЕСТИ НА ДРУГОЙ ДЕНЬ</summary>
+      <label class="hint" style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:10px">на <input type="date" id="moveTo" value="${G.addDays(day.on, 1)}" style="width:auto;font-size:16px"></label>
+      <button class="act" data-move="one">ТОЛЬКО ЭТУ ТРЕНИРОВКУ</button>
+      <button class="act" data-move="all">СДВИНУТЬ ВЕСЬ ПЛАН</button>
+      <div class="hint">«Весь план» двигает эту и все следующие тренировки, тесты и разгрузки на столько же дней. Отменить можно в «Походе».</div>
+    </details>`}`;
 }
+function dayWhen(day) { return `${G.dowOf(day.on)}, ${fmt(day.on)}${day.on !== day.date ? ` (по плану ${fmt(day.date)})` : ""}`; }
 function weekNote(day) { const w = G.WEEKS.find(x => x.n === day.week); return w.note ? ` · ${esc(w.note)}` : ""; }
 
 function exHTML(day, i, b) {
@@ -218,7 +225,7 @@ function noteHTML(day, i) {
 function cardioHTML(day, L) {
   const items = day.items.map((it, i) => noteHTML(day, i)).join("");
   return `<div class="cardio"><h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
-  <div class="dayhead"><h1>${esc(day.title)}</h1><p>${esc(day.dow)}, ${fmt(day.date)}${weekNote(day)}</p></div>
+  <div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div>
   ${items}
   <div class="finish"><textarea id="dayNote" placeholder="Заметка">${esc(L?.dayNote || "")}</textarea>
   ${finishButtons(day, L, L?.items?.some(x => x.done), "ПАТРУЛЬ ПРОЙДЕН", "ПАТРУЛЬ ПРОЙДЕН ✦")}</div>`;
@@ -281,6 +288,15 @@ main.addEventListener("click", e => {
     runSync();
     return;
   }
+  const mv = e.target.closest("[data-move]");
+  if (mv) {
+    const day = cur.day, to = $("#moveTo")?.value; if (!to) return;
+    const n = G.daysBetween(day.on, to); if (!n) return;
+    (S.meta.shifts ||= []).push({ at: day.date, days: n, scope: mv.dataset.move, madeAt: new Date().toISOString() });
+    touchMeta(); recompute(); renderTop(); render();
+    toast(mv.dataset.move === "all" ? `План сдвинут на ${n} дн.` : `Тренировка перенесена на ${fmt(to)}`);
+    return;
+  }
   if (e.target.closest("#skip")) { const day = cur.day, L = getLog(day, true); L.skipped = true; L.finished = false; commit(day, L); render(); runSync(); return; }
   if (e.target.closest("#unskip")) { const day = cur.day, L = getLog(day, true); L.skipped = false; commit(day, L); render(); return; }
   if (e.target.closest("#reopen")) { const day = cur.day, L = getLog(day, true); L.finished = false; commit(day, L); render(); return; }
@@ -328,11 +344,13 @@ sv.addEventListener("keydown", e => { if (e.key === "Enter") $("#sheetOk").click
 function renderJourney() {
   const t = todayISO(), sk = SUM.streak, left = G.FREEZES - (S.meta.freezes || []).length;
   const bar = sk.weeks.map(w => `<i class="${w.status} ${w.tavern ? "tavern" : ""}" title="Неделя ${w.n}"></i>`).join("");
-  let h = `<p class="lead">Поход</p><p class="sub">${G.WEEKS.length} недель · ${fmt(G.WEEKS[0].from)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].to)}.${G.WEEKS[G.WEEKS.length - 1].to.slice(0, 4)}</p>
+  let h = `<p class="lead">Поход</p><p class="sub">${G.WEEKS.length} недель · ${fmt(G.WEEKS[0].onFrom)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].onTo)}.${G.WEEKS[G.WEEKS.length - 1].onTo.slice(0, 4)}</p>
   <div class="weeksbar" style="--n:${G.WEEKS.length}">${bar}</div>
   <div class="legend"><span style="--c:var(--gold)">выполнена</span><span style="--c:#3e5566">заморозка</span><span style="--c:#3a1410">пропуск</span><span style="--c:rgba(255,170,60,.7)">таверна</span></div>
   <div class="stats"><div><b>${sk.cur}</b><span>серия</span></div><div><b>${sk.best}</b><span>лучшая</span></div><div><b>${left}</b><span>заморозок</span></div></div>
   <p class="hint" style="text-align:left;margin-top:8px">Неделя засчитана, если все обязательные бои проведены. Таверна (разгрузка) серию не рвёт. Заморозка — на экзамен или болезнь.</p>`;
+  const shifts = S.meta.shifts || [];
+  if (shifts.length) h += `<h2 class="sec">ПЕРЕНОСЫ</h2><ul class="list">${shifts.map((x, k) => `<li><span>${esc(G.DAY_BY_DATE[x.at]?.title || x.at)} (${fmt(x.at)}) · ${x.days > 0 ? "+" : ""}${x.days} дн. ${x.scope === "all" ? "и весь план после" : "только она"}</span><span><button class="ghostbtn" data-unshift="${k}" style="border:1px solid var(--line2);padding:2px 8px;font-family:var(--caps);letter-spacing:.1em;font-size:13px">отменить</button></span></li>`).join("")}</ul>`;
   let lastBlock = null;
   for (const w of G.WEEKS) {
     const bn = +(/Блок (\d+)/.exec(w.block) || [0, 0])[1];
@@ -341,17 +359,19 @@ function renderJourney() {
     const mons = w.days.map(d => {
       const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
       const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : "КАР";
-      return `<button class="mon ${m ? "" : "cardio"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.date === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : ""}">${inner}</button>`;
+      return `<button class="mon ${m ? "" : "cardio"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : ""}">${inner}</button>`;
     }).join("");
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
     h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
-      <div class="mid"><small>${fmt(w.from)}–${fmt(w.to)}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
+      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
       <div class="r">${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
   }
   main.innerHTML = h;
 }
 main.addEventListener("click", e => {
+  const u = e.target.closest("[data-unshift]");
+  if (u) { S.meta.shifts.splice(+u.dataset.unshift, 1); touchMeta(); recompute(); renderJourney(); return; }
   const f = e.target.closest("[data-freeze]"); if (!f) return;
   const n = +f.dataset.freeze, fr = S.meta.freezes ||= [];
   const i = fr.indexOf(n); if (i >= 0) fr.splice(i, 1); else fr.push(n);

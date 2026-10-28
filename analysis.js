@@ -25,7 +25,7 @@ export function exerciseSeries(logs) {
 
 // Выполнение плана по неделям: доля нанесённого урона от здоровья всех монстров недели.
 export function weekly(logs, today) {
-  return WEEKS.filter(w => w.from <= today).map(w => {
+  return WEEKS.filter(w => w.onFrom <= today).map(w => {
     let hp = 0, dealt = 0, done = 0, reps = 0;
     for (const d of w.days) {
       if (isCardio(d)) continue;
@@ -34,7 +34,7 @@ export function weekly(logs, today) {
       if (b.setsDone) done++;
       (logs[d.date]?.items || []).forEach(x => (x.reps || []).forEach(r => { if (+r > 0) reps += +r; }));
     }
-    return { n: w.n, from: w.from, to: w.to, pct: hp ? dealt / hp : 0, done, goal: weekGoal(w), reps, current: today <= w.to };
+    return { n: w.n, from: w.onFrom, to: w.onTo, pct: hp ? dealt / hp : 0, done, goal: weekGoal(w), reps, current: today <= w.onTo };
   });
 }
 

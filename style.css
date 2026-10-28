@@ -206,3 +206,7 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .msg{font-style:italic;color:var(--dust);min-height:1.4em}
 .toast{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0));z-index:50;max-width:520px;margin:0 auto;background:var(--ash2);border:1px solid var(--gold);padding:12px 14px;font-family:var(--caps);letter-spacing:.08em;text-align:center}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.move summary{list-style:none;display:grid;place-items:center;cursor:pointer;text-align:center;letter-spacing:.16em;font-size:16px}
+.move summary::-webkit-details-marker{display:none}
+.move[open] summary{border-color:var(--gold);color:var(--gold)}
+.move .act{margin-top:8px}

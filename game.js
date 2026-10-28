@@ -48,9 +48,27 @@ const MINIBOSS_BY_DATE = { "2026-11-13": "goblin-chief" };
 const BOSS_ORDER = ["boss-goblin-king", "boss-orc-warlord", "boss-ancient-dragon", "boss-orc-warlord", "boss-ancient-dragon"];
 
 // ---------- план ----------
-export const WEEKS = PLAN;
-export const DAYS = PLAN.flatMap(w => w.days.map(d => ({ ...d, week: w.n, block: w.block, blockN: +(/Блок (\d)/.exec(w.block) || [0, 0])[1] })));
+export const DAYS = PLAN.flatMap(w => w.days.map(d => ({ ...d, week: w.n, block: w.block, blockN: +(/Блок (\d+)/.exec(w.block) || [0, 0])[1], on: d.date })));
+export const WEEKS = PLAN.map(w => ({ ...w, days: DAYS.filter(d => d.week === w.n), onFrom: w.from, onTo: w.to }));
 export const DAY_BY_DATE = Object.fromEntries(DAYS.map(d => [d.date, d]));
+
+// ---------- переносы ----------
+// day.date — дата по плану, она же id записи и не меняется никогда. day.on — когда тренировка стоит сейчас с учётом переносов.
+// meta.shifts = [{ at: "<дата плана>", days: N, scope: "one" | "all" }]: «one» двигает одну тренировку, «all» — её и весь план после.
+export const DOW_NAMES = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+export function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+export function daysBetween(a, b) { return Math.round((new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 864e5); }
+export function dowOf(iso) { return DOW_NAMES[new Date(iso + "T12:00:00Z").getUTCDay()]; }
+export function applyShifts(shifts = []) {
+  const offAll = date => shifts.reduce((a, s) => a + (s.scope !== "one" && date >= s.at ? s.days : 0), 0);
+  for (const d of DAYS) d.on = addDays(d.date, offAll(d.date) + shifts.reduce((a, s) => a + (s.scope === "one" && s.at === d.date ? s.days : 0), 0));
+  for (const w of WEEKS) {
+    w.days.sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0));
+    const ons = w.days.map(d => d.on);
+    w.onFrom = [addDays(w.from, offAll(w.from)), ...ons].sort()[0];
+    w.onTo = [addDays(w.to, offAll(w.to)), ...ons].sort().pop();
+  }
+}
 // План может расти (например, до 52 недель): боссы и таверны выводятся из самого плана, а не из дат.
 // Тест = босс, по очереди; лёгкие/разгрузочные недели = таверна.
 const BOSS_BY_DATE = {};
@@ -177,7 +195,7 @@ export function levelFromXp(xp) {
 // ---------- недели и серии ----------
 export function weekGoal(w) { return w.days.filter(d => !isCardio(d) && !isOptional(d)).length; }
 export function weekOf(dateISO) {
-  return WEEKS.find(w => dateISO >= w.from && dateISO <= w.to) || (dateISO < WEEKS[0].from ? WEEKS[0] : WEEKS[WEEKS.length - 1]);
+  return WEEKS.find(w => dateISO >= w.onFrom && dateISO <= w.onTo) || (dateISO < WEEKS[0].onFrom ? WEEKS[0] : WEEKS[WEEKS.length - 1]);
 }
 // Бой засчитан, если есть записи и он завершён — или день уже прошёл (перенос из тетради без кнопки «Завершить»).
 // Пропущенный день (skipped) и пустой день просто не засчитываются: никаких других последствий.
@@ -185,12 +203,12 @@ function dayFinished(L, past) { return !!(L && !L.skipped && (L.finished || past
 
 export function weekStatus(w, logs, meta, today) {
   const goal = weekGoal(w);
-  const done = w.days.filter(d => !isCardio(d) && dayFinished(logs[d.date], d.date < today)).length;
+  const done = w.days.filter(d => !isCardio(d) && dayFinished(logs[d.date], d.on < today)).length;
   const tavern = TAVERN_WEEKS.has(w.n);
   const frozen = (meta.freezes || []).includes(w.n);
   let s;
   if (done >= goal && goal > 0) s = "ok";
-  else if (today <= w.to) s = today >= w.from ? "now" : "future";
+  else if (today <= w.onTo) s = today >= w.onFrom ? "now" : "future";
   else if (tavern || frozen) s = "frozen";
   else s = "miss";
   return { n: w.n, goal, done, status: s, tavern, frozen };
