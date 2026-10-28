@@ -43,8 +43,8 @@
       "weight": "Без резинки",
       "reps": [
         5,
-        8,
-        8
+        4,
+        3
       ],
       "note": ""
     },
@@ -80,9 +80,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 570,
-    "dealt": 289,
+    "dealt": 255,
     "overkill": 60,
     "killed": false
   },
-  "updatedAt": 1793204416571
+  "updatedAt": 1793204422660
 }
