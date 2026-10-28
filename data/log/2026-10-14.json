@@ -16,7 +16,7 @@
       "weight": "свой вес",
       "reps": [
         10,
-        5,
+        10,
         5,
         5
       ],
@@ -73,8 +73,8 @@
     "monster": "Гоблин-лучник",
     "hp": 570,
     "dealt": 120,
-    "overkill": 30,
+    "overkill": 60,
     "killed": false
   },
-  "updatedAt": 1793199065806
+  "updatedAt": 1793199075603
 }
