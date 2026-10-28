@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Пепел и гоблины</title>
+<meta name="description" content="Дневник тренировок с монстрами">
+<meta name="theme-color" content="#0b0a09">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-180.png">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <button class="lvl" id="lvlBtn" aria-label="Герой"><span>ур.</span><b id="lvl">1</b></button>
+  <div class="xp"><span id="xpTxt">Странник · 0 / 200</span><div class="bar"><i id="xpBar"></i></div></div>
+  <button class="syncdot" id="syncBtn" aria-label="Синхронизация"><i></i></button>
+</header>
+<main id="main"></main>
+<nav class="tabs" role="tablist">
+  <a href="#/battle" data-tab="battle">Бой</a>
+  <a href="#/journey" data-tab="journey">Поход</a>
+  <a href="#/progress" data-tab="progress">Прогресс</a>
+  <a href="#/hero" data-tab="hero">Герой</a>
+</nav>
+<div class="sheet" id="sheet" hidden>
+  <div class="in">
+    <div class="t" id="sheetTitle"></div>
+    <div class="step">
+      <button id="minus" aria-label="Минус один">−</button>
+      <input id="sheetVal" inputmode="decimal" autocomplete="off" aria-label="Повторы">
+      <button id="plus" aria-label="Плюс один">+</button>
+    </div>
+    <div class="row2">
+      <button class="ghostbtn" id="sheetClear">Стереть</button>
+      <button class="okbtn" id="sheetOk">Готово</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
