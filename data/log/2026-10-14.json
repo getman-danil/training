@@ -18,7 +18,7 @@
         10,
         10,
         8,
-        5
+        7
       ],
       "note": ""
     },
@@ -28,7 +28,11 @@
       "plan": "3×8 на ногу",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        8,
+        8,
+        8
+      ],
       "note": ""
     },
     {
@@ -72,9 +76,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 570,
-    "dealt": 120,
-    "overkill": 78,
+    "dealt": 210,
+    "overkill": 90,
     "killed": false
   },
-  "updatedAt": 1793199364020
+  "updatedAt": 1793199379629
 }
