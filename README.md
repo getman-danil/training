@@ -28,6 +28,8 @@
 ```
 data/log/2026-10-28.json   — одна тренировка (дата из плана)
 data/meta.json             — заморозки серии (freezes) и переносы тренировок (shifts: at = дата по плану, days = на сколько дней, scope = one | all)
+                             и билд героя (build.log = [{at: дата, stats: {str,end,agi,wil,lck}, nodes: [id узлов древа]}], build.respecs = блоки, где был сброс;
+                             gear.log = [{at: дата, eq: {weapon, armor, amulet, ring: id вещи}}], вещь целиком выводится из id)
 ```
 
 Формат записи тренировки:

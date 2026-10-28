@@ -36,12 +36,13 @@ function commit(day, L) {
   const before = SUM?.level;
   touchLog(L);
   recompute(); renderTop();
-  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title}`);
+  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
 }
 
 // ---------- верхняя панель ----------
 function renderTop() {
   $("#lvl").textContent = SUM.level;
+  $("#lvlBtn").classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
   $("#xpTxt").textContent = `${SUM.title} · ${SUM.into} / ${SUM.need}`;
   $("#xpBar").style.width = (SUM.into / SUM.need * 100).toFixed(1) + "%";
 }
@@ -119,7 +120,7 @@ function stageHTML(day) {
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
     <div class="flash"></div><div class="dmg" id="dmg"></div>
     <div class="art ${m.placeholder && !m.tavern ? "shadow" : ""}" id="art">${art}</div>
-    <div class="mname"><span>${esc(m.name)}</span><small>${tag}</small></div>
+    <div class="mname"><span>${esc(m.name)}</span><small>${tag ? tag + " · " : ""}УР. ${G.monsterLevel(day)}</small></div>
     <div class="hp"><div class="bar"><u id="hpU"></u><i id="hpI"></i></div><div class="nums"><span class="num" id="hpV"></span><span id="hpS">здоровье</span></div></div>
     <div id="bannerHost"></div>
   </div>`;
@@ -147,9 +148,11 @@ function updateStage(animate, info) {
   art.classList.toggle("fled", !b.killed && (!!L?.skipped || (!!L?.finished && b.dealt > 0)));
   const host = $("#bannerHost");
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${SUM.perDay[day.date]?.xp || 0} опыта</small></div>`;
+  const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
+  const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${SUM.perDay[day.date]?.xp || 0} опыта${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -377,7 +380,7 @@ $("#sheetOk").onclick = () => {
 // ПОХОД
 // =====================================================================
 function renderJourney() {
-  const t = todayISO(), sk = SUM.streak, left = G.FREEZES - (S.meta.freezes || []).length;
+  const t = todayISO(), sk = SUM.streak, left = Math.max(0, G.freezeLimit(S.meta) - (S.meta.freezes || []).length);
   const bar = sk.weeks.map(w => `<i class="${w.status} ${w.tavern ? "tavern" : ""}" title="Неделя ${w.n}"></i>`).join("");
   let h = `<p class="lead">Поход</p><p class="sub">${G.WEEKS.length} недель · ${fmt(G.WEEKS[0].onFrom)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].onTo)}.${G.WEEKS[G.WEEKS.length - 1].onTo.slice(0, 4)}</p>
   <div class="weeksbar" style="--n:${G.WEEKS.length}">${bar}</div>
@@ -473,6 +476,7 @@ function renderHero() {
   let h = `<p class="lead">${esc(s.title)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}.</p>
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
+  ${buildHTML(s)}
   <h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`).join("")}</div>
   <h2 class="sec">БЕСТИАРИЙ</h2><div class="beasts">`;
   for (const m of Object.values(G.MONSTERS)) {
@@ -483,6 +487,8 @@ function renderHero() {
   h += `</div><h2 class="sec">ТИТУЛЫ</h2><ul class="list">${G.TITLES.map((t, i) => `<li><span>${esc(t)}</span><span>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</span></li>`).join("")}</ul>
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
+  <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
@@ -490,6 +496,96 @@ function renderHero() {
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
   main.innerHTML = h;
 }
+
+// ---------- билд: характеристики, древо, снаряжение ----------
+let treeTab = "str";
+function buildHTML(s) {
+  const a = s.build.alloc, eff = s.build.stats, prev = prevAlloc();
+  let h = `<h2 class="sec">ХАРАКТЕРИСТИКИ</h2><p class="sub">Свободных очков: <b class="gold">${s.free}</b> из ${s.points} (уровни + боссы).</p><div class="build">`;
+  for (const st of G.STATS) {
+    const v = a.stats[st.id], bonus = eff[st.id] - v, canDown = v > prev.stats[st.id];
+    h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${eff[st.id]}</span><button data-st="${st.id}" data-d="1" ${s.free > 0 ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
+      <small>${esc(st.per)} за очко${bonus ? ` · ${v} вложено, +${bonus} от узлов и вещей` : ""}</small></div>`;
+  }
+  h += `</div><h2 class="sec">ДРЕВО НАВЫКОВ</h2><p class="sub">Очков навыка: <b class="gold">${s.skillFree}</b> из ${s.skillPoints} (1 за уровень). Узел открывается, когда взяты те, что над ним. Из двух вершин — только одна.</p>
+  <div class="ttabs">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}">${st.name}</button>`).join("")}</div>${treeHTML(s, treeTab)}`;
+  h += gearHTML(s);
+  const can = G.canRespec(S.meta, todayISO());
+  if (s.spent || s.skillSpent) h += can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ДРЕВО</button><p class="hint">Сброс — один раз за блок. Снаряжение не снимается, полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Вложенное сегодня можно вернуть.</p>`;
+  return h;
+}
+function treeHTML(s, st) {
+  const taken = s.build.alloc.nodes, eff = s.build.nodes, prev = prevAlloc().nodes;
+  const rows = [0, 1, 2, 3].map(r => G.TREE[st].filter(n => n.row === r));
+  return `<div class="tree">${rows.map((ns, r) => `<div class="trow r${r}">${ns.map(n => {
+    const own = taken.includes(n.id), fromGear = !own && eff.includes(n.id);
+    const can = !own && s.skillFree > 0 && G.canTakeNode(taken, n.id);
+    // Вернуть можно узел, взятый сегодня, если от него ничего не зависит.
+    const undo = own && !prev.includes(n.id) && !taken.some(x => G.NODE_BY_ID[x].req.includes(n.id));
+    const cls = [n.kind, n.col, own || fromGear ? "on" : can ? "pick" : "off", fromGear ? "gear" : ""].join(" ");
+    return `<button class="node ${cls}" data-node="${n.id}" ${can || undo ? "" : "disabled"}><b>${esc(n.name)}</b><small>${esc(n.desc)}${fromGear ? " · от вещи" : ""}</small></button>`;
+  }).join("")}</div>`).join("")}</div>`;
+}
+const RARITY = { common: "обычная", rare: "редкая", legendary: "легендарная" };
+function gearHTML(s) {
+  const eq = s.build.eq, inv = s.inventory;
+  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="slots">${G.SLOTS.map(sl => {
+    const it = eq[sl.id] && G.itemOf(eq[sl.id]);
+    return `<div class="slot ${it ? it.rarity : "empty"}"><span>${sl.name}</span>${it ? `<b>${esc(it.name)}</b><small>${esc(G.itemText(it))}</small><button class="ghostbtn" data-unequip="${sl.id}">снять</button>` : "<b>пусто</b>"}</div>`;
+  }).join("")}</div>`;
+  if (!inv.length) return h + `<p class="hint">Вещи падают с находок (шанс растёт с Удачей) и всегда — с боссов.</p>`;
+  h += `<ul class="list inv">${inv.slice().reverse().map(it => {
+    const on = eq[it.slot] === it.id;
+    return `<li class="${it.rarity}"><span><b>${esc(it.name)}</b><small>${G.SLOTS.find(x => x.id === it.slot).name} · ${RARITY[it.rarity]} · ${fmt(it.date)}<br>${esc(G.itemText(it))}</small></span>${on ? "<em>надето</em>" : `<button class="ghostbtn" data-equip="${it.id}">надеть</button>`}</li>`;
+  }).join("")}</ul>`;
+  return h;
+}
+// Что было вложено до сегодняшнего дня: сегодняшние изменения можно откатить без сброса. После сброса сегодня пол нулевой.
+function prevAlloc() {
+  const log = S.meta.build?.log || [], last = log[log.length - 1];
+  return last?.at === todayISO() && last.respec ? G.allocAt({}, "") : G.allocAt(S.meta, G.addDays(todayISO(), -1));
+}
+function todayEntry(key, init) {
+  const t = todayISO(), m = S.meta[key] ||= { log: [] };
+  let e = m.log[m.log.length - 1];
+  if (!e || e.at !== t) { e = { at: t, ...init() }; m.log.push(e); }
+  return [e, m];
+}
+function saveHero() { touchMeta(); recompute(); renderTop(); renderHero(); }
+main.addEventListener("click", e => {
+  if (route().tab !== "hero") return;
+  const tt = e.target.closest("[data-tt]");
+  if (tt) { treeTab = tt.dataset.tt; renderHero(); return; }
+  const st = e.target.closest("[data-st]");
+  if (st) {
+    const d = +st.dataset.d, k = st.dataset.st;
+    if (d > 0 && SUM.free <= 0) return;
+    const [b] = todayEntry("build", () => { const a = G.allocAt(S.meta, "9999-12-31"); return { stats: a.stats, nodes: a.nodes }; });
+    b.stats[k] = Math.max(prevAlloc().stats[k], b.stats[k] + d);
+    saveHero(); return;
+  }
+  const nd = e.target.closest("[data-node]");
+  if (nd) {
+    const id = nd.dataset.node;
+    const [b] = todayEntry("build", () => { const a = G.allocAt(S.meta, "9999-12-31"); return { stats: a.stats, nodes: a.nodes }; });
+    if (b.nodes.includes(id)) b.nodes = b.nodes.filter(x => x !== id);
+    else if (SUM.skillFree > 0 && G.canTakeNode(b.nodes, id)) b.nodes.push(id);
+    saveHero(); return;
+  }
+  const eq = e.target.closest("[data-equip]"), uq = e.target.closest("[data-unequip]");
+  if (eq || uq) {
+    const [g] = todayEntry("gear", () => ({ eq: G.gearAt(S.meta, "9999-12-31") }));
+    if (eq) g.eq[G.itemOf(eq.dataset.equip).slot] = eq.dataset.equip; else delete g.eq[uq.dataset.unequip];
+    saveHero(); return;
+  }
+  if (e.target.closest("#respec")) {
+    if (!confirm("Сбросить все очки характеристик и древо? В этом блоке сброс больше не будет доступен.")) return;
+    const [b, bm] = todayEntry("build", () => ({}));
+    Object.assign(b, { stats: { str: 0, end: 0, agi: 0, wil: 0, lck: 0 }, nodes: [], respec: true });
+    (bm.respecs ||= []).push(G.weekOf(todayISO()).block);
+    saveHero();
+  }
+});
 
 // =====================================================================
 // НАСТРОЙКИ
