@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "В — махи + объём",
   "performedOn": "2026-10-16",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-28T15:21:03.576Z",
   "dayNote": "",
   "items": [
     {
@@ -95,5 +95,5 @@
     "overkill": 45,
     "killed": false
   },
-  "updatedAt": 1793200763016
+  "updatedAt": 1793200863576
 }
