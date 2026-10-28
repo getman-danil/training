@@ -19,7 +19,7 @@
         12,
         12,
         12,
-        10
+        15
       ],
       "note": ""
     },
@@ -74,8 +74,8 @@
     "monster": "Гоблин-шаман",
     "hp": 600,
     "dealt": 150,
-    "overkill": 24,
+    "overkill": 39,
     "killed": false
   },
-  "updatedAt": 1793200687941
+  "updatedAt": 1793200694968
 }
