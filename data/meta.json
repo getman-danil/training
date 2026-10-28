@@ -1,1 +1,12 @@
-{ "freezes": [], "updatedAt": 0 }
+{
+  "freezes": [],
+  "updatedAt": 1793204167381,
+  "shifts": [
+    {
+      "at": "2026-10-19",
+      "days": 4,
+      "scope": "all",
+      "madeAt": "2026-10-28T16:16:07.381Z"
+    }
+  ]
+}
