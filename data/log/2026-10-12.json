@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "А — тяга + присед",
   "performedOn": "2026-10-12",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-28T14:50:22.899Z",
   "dayNote": "",
   "items": [
     {
@@ -96,5 +96,5 @@
     "overkill": 111,
     "killed": false
   },
-  "updatedAt": 1793199009638
+  "updatedAt": 1793199022899
 }
