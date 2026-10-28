@@ -80,7 +80,11 @@
       "plan": "3×8",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        8,
+        8,
+        8
+      ],
       "note": ""
     }
   ],
@@ -88,9 +92,9 @@
   "game": {
     "monster": "Гоблин-налётчик",
     "hp": 570,
-    "dealt": 480,
+    "dealt": 570,
     "overkill": 111,
-    "killed": false
+    "killed": true
   },
-  "updatedAt": 1793198988451
+  "updatedAt": 1793199000721
 }
