@@ -62,5 +62,5 @@ github.com → Settings → Developer settings → Fine-grained tokens → Gener
 | `analysis.js` | встроенный анализ и подсказки |
 | `store.js` | хранение на телефоне и синхронизация с GitHub |
 | `app.js`, `index.html`, `style.css` | интерфейс |
-| `sw.js`, `manifest.webmanifest` | офлайн и установка. После изменения файлов поднять `VERSION` в `sw.js` |
+| `sw.js`, `app.webmanifest` | офлайн и установка. После изменения файлов поднять `VERSION` в `sw.js` |
 | `assets/monsters/` | картинки монстров. Боссы и хозяин таверны пока силуэты: положить `boss-goblin-king.webp`, `boss-orc-warlord.webp`, `boss-ancient-dragon.webp`, `tavern-keeper.webp` и поправить `MONSTERS` в `game.js` |

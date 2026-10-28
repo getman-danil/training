@@ -1,10 +1,10 @@
 {
-  "id": "/training/",
+  "id": "/training/plan",
   "name": "Тренировочный план",
   "short_name": "Тренировочный план",
   "description": "Тренировки с гирями и турником, где каждый подход бьёт монстра",
   "lang": "ru",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

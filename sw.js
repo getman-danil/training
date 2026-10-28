@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -11,7 +11,7 @@ const FILES = [
   "store.js",
   "analysis.js",
   "plan.js",
-  "manifest.webmanifest",
+  "app.webmanifest",
   "assets/fonts/fonts.css",
   "assets/fonts/CormorantGaramond-400-cyrillic.woff2",
   "assets/fonts/CormorantGaramond-400-latin.woff2",
