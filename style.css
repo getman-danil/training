@@ -317,3 +317,9 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .mon.sortie svg{width:28px;height:28px}
 .sublink{border:0;background:none;color:var(--dust);font-family:var(--caps);letter-spacing:.1em;font-size:13px;text-decoration:underline;text-underline-offset:3px;padding:0 0 0 6px}
 .ex.cx .h em{flex:0 0 auto}
+/* события: кровавая луна и боссы событий */
+.stage.moon::before{background:radial-gradient(28% 22% at 78% 18%,rgba(200,40,30,.55),transparent 70%),radial-gradient(60% 45% at 50% 70%,rgba(142,26,18,.4),transparent 72%),radial-gradient(70% 30% at 50% 100%,rgba(120,110,95,.18),transparent 70%)}
+.stage.moon .art img{filter:drop-shadow(0 0 18px rgba(170,30,20,.45)) sepia(.15) saturate(1.15)}
+.stage.event::before{background:radial-gradient(55% 45% at 50% 68%,rgba(110,160,220,.22),transparent 72%),radial-gradient(70% 30% at 50% 100%,rgba(120,110,95,.18),transparent 70%)}
+.stage.moon .mname small,.stage.event .mname small{color:#d4534a}
+.evt{color:#c98a7a;font-style:italic}
