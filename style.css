@@ -299,6 +299,13 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .beast.studied{border-color:#6b5b3a}
 .titles li.hard b{color:#5fd0b0}
 .titles li.locked{opacity:.5}
+/* элита: та же картинка на золотистом фоне (свечение по самой картинке размывает полупрозрачных монстров) */
+.stage.elite::before{background:radial-gradient(48% 42% at 50% 62%,rgba(214,172,80,.55),rgba(201,162,74,.22) 55%,transparent 78%),radial-gradient(70% 30% at 50% 100%,rgba(120,110,95,.18),transparent 70%);animation:aura 3s ease-in-out infinite}
+@keyframes aura{0%,100%{opacity:.85}50%{opacity:1}}
+.stage.elite .mname small{color:var(--gold)}
+.mon.elite{border-color:#8a6d2e;background:radial-gradient(circle at 50% 60%,rgba(214,172,80,.55),var(--ash) 75%)}
+.beast.elite{border-color:#5a4a28}
+.beast.elite:not(.unseen) .pic{background:radial-gradient(circle at 50% 60%,rgba(214,172,80,.5),transparent 70%)}
 /* своя тренировка и вылазки */
 .ex.cx .h{align-items:center}
 .ex.cx .cname{font-weight:600;font-size:18px;padding:6px 8px;flex:1}

@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v22";
+const VERSION = "v23";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -28,6 +28,33 @@ const FILES = [
   "assets/monsters/dragon-drake.webp",
   "assets/monsters/dragon-wyvern.webp",
   "assets/monsters/goblin-archer.webp",
+  "assets/monsters/elite-goblin-raider.webp",
+  "assets/monsters/elite-goblin-archer.webp",
+  "assets/monsters/elite-goblin-shaman.webp",
+  "assets/monsters/elite-undead-skeleton.webp",
+  "assets/monsters/elite-undead-ghoul.webp",
+  "assets/monsters/elite-undead-wraith.webp",
+  "assets/monsters/elite-dragon-drake.webp",
+  "assets/monsters/elite-orc-grunt.webp",
+  "assets/monsters/elite-orc-berserker.webp",
+  "assets/monsters/elite-orc-warg-rider.webp",
+  "assets/monsters/elite-dragon-wyvern.webp",
+  "assets/monsters/lizard-spearman.webp",
+  "assets/monsters/lizard-hunter.webp",
+  "assets/monsters/lizard-priest.webp",
+  "assets/monsters/demon-imp.webp",
+  "assets/monsters/demon-hound.webp",
+  "assets/monsters/demon-executioner.webp",
+  "assets/monsters/treant-sapling.webp",
+  "assets/monsters/treant-strangler.webp",
+  "assets/monsters/treant-elder.webp",
+  "assets/monsters/minotaur-brute.webp",
+  "assets/monsters/minotaur-charger.webp",
+  "assets/monsters/minotaur-keeper.webp",
+  "assets/monsters/lizard-chief.webp",
+  "assets/monsters/treant-ancient.webp",
+  "assets/monsters/boss-demon-lord.webp",
+  "assets/monsters/boss-minotaur-king.webp",
   "assets/monsters/goblin-chief.webp",
   "assets/monsters/goblin-raider.webp",
   "assets/monsters/goblin-shaman.webp",
