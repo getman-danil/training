@@ -30,7 +30,7 @@ function getLog(day, create) {
 }
 function commit(day, L) {
   const b = G.battle(day, L), m = G.monsterFor(day);
-  L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed } : { patrol: true };
+  L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed, ...(b.replaced ? { replaced: true } : {}) } : { patrol: true };
   // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
   if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.on < todayISO() ? day.on : todayISO();
   const before = SUM?.level, rw = SUM?.unclaimed;
@@ -39,6 +39,26 @@ function commit(day, L) {
   if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
   else if (rw != null && SUM.unclaimed > rw) toast("Новая награда — забери её в Летописи");
 }
+
+// Вылазка — тренировка вне плана, своя запись с ключом "x-<дата>".
+function commitSortie(L) {
+  L.game = { sortie: true, sets: G.customSets(L) };
+  const before = SUM?.level;
+  touchLog(L);
+  recompute(); renderTop();
+  if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
+}
+function newSortie(on) {
+  let key = "x-" + on, n = 1;
+  while (S.logs[key]) key = `x-${on}-${++n}`;
+  const L = { date: key, sortie: true, title: "Вылазка", performedOn: on, finished: false, finishedAt: null, dayNote: "", items: [], extra: [blankEx()] };
+  S.logs[key] = L; commitSortie(L);
+  return key;
+}
+const blankEx = () => ({ name: "", weight: "", reps: [], note: "" });
+// Экран работает либо с днём плана (cur.day), либо с вылазкой (cur.sortie).
+function curLog(create) { return cur.sortie ? S.logs[cur.sortie] : getLog(cur.day, create); }
+function commitCur(L) { if (cur.sortie) commitSortie(L); else commit(cur.day, L); }
 
 // ---------- верхняя панель ----------
 function renderTop() {
@@ -76,12 +96,14 @@ addEventListener("hashchange", () => { closeSheet(); render(); scrollTo(0, 0); }
 
 function render() {
   const r = route();
-  document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === r.tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  const tab = r.tab === "sortie" ? "battle" : r.tab;
+  document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (r.tab === "journey") renderJourney();
   else if (r.tab === "progress") renderProgress();
   else if (r.tab === "hero") renderHero();
   else if (r.tab === "chronicle") renderChronicle();
   else if (r.tab === "settings") renderSettings();
+  else if (r.tab === "sortie") renderSortie(decodeURIComponent(r.arg || ""));
   else renderBattle(G.DAY_BY_DATE[r.arg] ? r.arg : defaultDate());
 }
 
@@ -99,6 +121,7 @@ function dayState(d) {
 }
 
 function renderBattle(date) {
+  if (cur?.day?.date !== date) subOpen.clear();
   const day = G.DAY_BY_DATE[date], L = getLog(day, false) || null;
   cur = { day };
   const w = G.WEEKS.find(x => x.n === day.week), wi = G.WEEKS.indexOf(w);
@@ -155,7 +178,7 @@ function updateStage(animate, info) {
   const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -170,8 +193,8 @@ function exercisesHTML(day) {
   const L = S.logs[day.date];
   const b = G.battle(day, L);
   let h = `<div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div><div id="exlist">`;
-  day.items.forEach((it, i) => { h += it.type === "ex" ? exHTML(day, i, b) : noteHTML(day, i); });
-  h += `</div><div class="finish">
+  if (!L?.replaced) day.items.forEach((it, i) => { h += it.type === "ex" ? exHTML(day, i, b) : noteHTML(day, i); });
+  h += `</div>${customHTML(L, false)}${offPlanHTML(day, L)}<div class="finish">
     <textarea id="dayNote" placeholder="Заметка о тренировке: самочувствие, сон, что было тяжело">${esc(L?.dayNote || "")}</textarea>
     ${finishButtons(day, L, b.setsDone, "ЗАВЕРШИТЬ БОЙ", "ВЕРНУТЬСЯ В БОЙ")}
   </div>`;
@@ -182,7 +205,9 @@ function finishButtons(day, L, started, finishTxt, reopenTxt) {
   return `<div id="finBtns" class="finish" style="margin:0">${finishInner(day, L, started, finishTxt, reopenTxt)}</div>`;
 }
 function refreshFinish() {
-  const el = $("#finBtns"), day = cur.day, L = S.logs[day.date]; if (!el) return;
+  const el = $("#finBtns"); if (!el) return;
+  if (cur.sortie) { el.innerHTML = sortieFinish(S.logs[cur.sortie]); return; }
+  const day = cur.day, L = S.logs[day.date];
   el.outerHTML = G.isCardio(day) ? finishButtons(day, L, L?.items?.some(x => x.done), "ПАТРУЛЬ ПРОЙДЕН", "ПАТРУЛЬ ПРОЙДЕН ✦")
     : finishButtons(day, L, G.battle(day, L).setsDone, "ЗАВЕРШИТЬ БОЙ", "ВЕРНУТЬСЯ В БОЙ");
 }
@@ -220,9 +245,14 @@ function exHTML(day, i, b) {
   cells += `<button class="set add" data-add="${i}" aria-label="Добавить подход">+</button>`;
   const done = exb && exb.dealt >= exb.hp - 0.5;
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
-  return `<div class="ex ${done ? "done" : ""}" data-ex="${i}">
-    <div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
-    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit}</div>${it.hint ? `<div class="spec">${esc(it.hint)}</div>` : ""}
+  const sub = li?.sub != null || subOpen.has(i);
+  const head = sub
+    ? `<div class="h"><input class="cname" data-sub="${i}" list="exNames" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
+    <div class="spec">вместо: ${esc(it.name)} · подход засчитан, если повторов не меньше плановых · рекорд без крита</div>`
+    : `<div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
+    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit} <button class="sublink" data-subbtn="${i}">заменить</button></div>`;
+  return `<div class="ex ${done ? "done" : ""} ${sub ? "cx" : ""}" data-ex="${i}">
+    ${head}${it.hint && !sub ? `<div class="spec">${esc(it.hint)}</div>` : ""}
     <div class="sets">${cells}</div>
     <div class="fields"><input data-w="${i}" value="${esc(li ? li.weight : it.weight || "")}" placeholder="вес" aria-label="Вес"><input data-n="${i}" value="${esc(li?.note || "")}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
     ${exb && Math.abs(exb.lf - 1) > 0.005 ? `<div class="spec lf">вес не как в плане · урон за повтор ×${exb.lf.toFixed(2).replace(".", ",")}</div>` : ""}
@@ -232,6 +262,84 @@ function noteHTML(day, i) {
   const it = day.items[i], on = !!S.logs[day.date]?.items?.[i]?.done;
   return `<button class="note-it ${on ? "on" : ""}" data-note="${i}"><span class="box">${on ? "✓" : ""}</span><span>${esc(it.text)}${it.hint ? `<br><small>${esc(it.hint)}</small>` : ""}</span></button>`;
 }
+
+// ---------- своя тренировка ----------
+// Свои упражнения дня (дополнение или замена) и упражнения вылазки: название, подходы, вес, заметка.
+function customHTML(L, sortie) {
+  const xs = L?.extra || [];
+  if (!xs.length && !sortie && !L?.replaced) return `<div id="custom"></div>`;
+  const head = sortie ? "УПРАЖНЕНИЯ" : L.replaced ? "ТВОЯ ТРЕНИРОВКА ВМЕСТО ПЛАНА" : "СВЕРХ ПЛАНА";
+  return `<div id="custom"><h2 class="sec">${head}</h2>${xs.map((x, j) => cxHTML(L, j)).join("")}
+    <button class="act" data-cnew style="margin-top:10px">+ УПРАЖНЕНИЕ</button></div>`;
+}
+function cxHTML(L, j) {
+  const x = L.extra[j], prs = SUM.prs[L.date] || {}, reps = x.reps || [];
+  const cells = reps.map((r, k) => { const has = r != null && +r > 0; return `<button class="${["set", has ? "d" : "", prs[`x${j}:${k}`] ? "pr" : ""].join(" ")}" data-cset="${j}:${k}"><small>${k + 1}</small>${has ? r : '<span class="g">·</span>'}</button>`; }).join("");
+  return `<div class="ex cx" data-cx="${j}">
+    <div class="h"><input class="cname" data-cname="${j}" list="exNames" value="${esc(x.name)}" placeholder="упражнение" aria-label="Упражнение" autocomplete="off"><button class="ghostbtn cdel" data-cdel="${j}" aria-label="Убрать упражнение">✕</button></div>
+    <div class="sets">${cells}<button class="set add" data-cadd="${j}" aria-label="Добавить подход">+</button></div>
+    <div class="fields"><input data-cw="${j}" value="${esc(x.weight)}" placeholder="вес" aria-label="Вес"><input data-cn="${j}" value="${esc(x.note)}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
+  </div>`;
+}
+function refreshCx(j) {
+  const L = curLog(), el = main.querySelector(`[data-cx="${j}"]`);
+  if (el) { const tmp = document.createElement("div"); tmp.innerHTML = cxHTML(L, j); el.replaceWith(tmp.firstElementChild); }
+}
+// Три режима «не по плану». Заменённый день можно вернуть к плану — свои упражнения останутся дополнением.
+function offPlanHTML(day, L) {
+  if (L?.skipped) return "";
+  if (L?.replaced) return `<div class="finish" style="margin-bottom:0"><div class="hint">Тренировка заменена своей. Каждый твой подход бьёт монстра как плановый, но не больше чем на ${Math.round(G.REPLACE_CAP * 100)}%: убить можно только по плану. Монстр сбежит и вернётся на реванш. Неделя для серии засчитывается.</div>
+    <button class="act" id="unreplace">ВЕРНУТЬ ПЛАН</button></div>`;
+  const cardio = G.isCardio(day);
+  return `<details class="move offplan"><summary class="act">ВЫШЛО НЕ ПО ПЛАНУ</summary>
+    <button class="act" data-off="add">ДОПОЛНИТЬ ТРЕНИРОВКУ</button>
+    ${cardio ? "" : `<button class="act" data-off="replace">ЗАМЕНИТЬ ТРЕНИРОВКУ</button>`}
+    <button class="act" data-off="sortie">ОТДЕЛЬНЫМ ДНЁМ</button>
+    <div class="hint" style="text-align:left">${cardio ? "" : `<b>Дополнить</b> — свои упражнения к плановым: идут в перебор, бонус за перебор общий, не больше +${Math.round(G.OVERKILL_CAP * 100)}%. <b>Заменить</b> — сделал другое вместо плана: подходы бьют монстра до ${Math.round(G.REPLACE_CAP * 100)}%, он сбегает и вернётся на реванш, серия не рвётся. `}<b>Отдельным днём</b> — вылазка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день. Любое упражнение дня можно <b>заменить</b> отдельно — кнопка у упражнения. Рекорды в своих и заменённых упражнениях записываются, но крита не дают.</div>
+  </details>`;
+}
+function sortieSVG() {
+  // Знамя вылазки.
+  return `<svg class="torch" viewBox="0 0 40 40" aria-hidden="true"><path d="M11 4v33" stroke="#c9a24a" stroke-width="2"/><path d="M12 6h18l-5 6l5 6h-18z" fill="#8e1a12" stroke="#c9a24a" stroke-width="1"/></svg>`;
+}
+function renderSortie(key) {
+  const L = S.logs[key];
+  if (!G.isSortieKey(key) || !L || L.deleted) { location.hash = "#/journey"; return; }
+  cur = { sortie: key };
+  const on = G.sortieDate(L);
+  main.innerHTML = `<div class="loc">ВЫЛАЗКА ВНЕ ПЛАНА · НЕДЕЛЯ ${G.weekOf(on).n}</div>
+  <div class="cardio">${sortieSVG()}<h2>ВЫЛАЗКА</h2><p>Тренировка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день. Рекорды записываются, но без крита. Золота, находок и серии нет: главное — сам план.</p></div>
+  <div class="dayhead"><input id="sTitle" class="ctitle" value="${esc(L.title || "")}" placeholder="Вылазка" aria-label="Название вылазки"><p>${G.dowOf(on)}, ${fmt(on)}</p></div>
+  ${customHTML(L, true)}
+  <div class="finish"><textarea id="dayNote" placeholder="Заметка: что делал и почему не по плану">${esc(L.dayNote || "")}</textarea>
+  <div id="finBtns" class="finish" style="margin:0">${sortieFinish(L)}</div></div>`;
+}
+function sortieFinish(L) {
+  const pd = SUM.perDay[L.date];
+  return `${L.finished ? `<button class="act" id="sReopen">ВЫЛАЗКА ЗАВЕРШЕНА ✦</button>` : `<button class="act gold" id="sFinish">ЗАВЕРШИТЬ ВЫЛАЗКУ</button>`}
+  ${pd?.xp ? `<div class="hint">+${pd.xp} опыта${pd.prs ? ` · рекордов: ${pd.prs}` : ""}</div>` : ""}
+  <label class="hint" style="display:flex;gap:10px;align-items:center;justify-content:center">сделал <input type="date" id="performedOn" value="${esc(L.performedOn)}" style="width:auto;font-size:16px"></label>
+  <button class="act" id="sDelete">УДАЛИТЬ ВЫЛАЗКУ</button>`;
+}
+// Подход своего упражнения: та же клавиатура, урон по монстру дня (в перебор или при замене) и криты.
+function setXRep(j, k, val) {
+  const L = curLog(true), x = L.extra[j];
+  const before = cur.sortie ? null : G.battle(cur.day, L);
+  const prBefore = Object.keys(SUM.prs[L.date] || {}).length;
+  x.reps ||= [];
+  if (val == null) { if (k === x.reps.length - 1) x.reps.pop(); else x.reps[k] = null; }
+  else { while (x.reps.length < k) x.reps.push(null); x.reps[k] = val; }
+  L.skipped = false;
+  commitCur(L);
+  const rec = !!(SUM.prs[L.date] || {})[`x${j}:${k}`] && Object.keys(SUM.prs[L.date] || {}).length > prBefore;
+  refreshCx(j); refreshFinish();
+  if (before) { const after = G.battle(cur.day, L); updateStage(true, { dmg: (after.dealt + after.over) - (before.dealt + before.over) }); }
+  if (rec) toast("Личный рекорд записан");
+}
+// Замена одного планового упражнения: li.sub — чем заменил. Пока название не введено, поле держится открытым в subOpen.
+const subOpen = new Set();
+const lfOf = (it, li) => (String(li?.sub || "").trim() ? 1 : G.loadFactor(it, li));
+function focusLastEx() { const ins = main.querySelectorAll("[data-cname]"); const el = ins[ins.length - 1]; if (el && !el.value) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }
 
 // Пока нет картинки патруля: факел дозорного.
 function patrolSVG() {
@@ -244,6 +352,7 @@ function cardioHTML(day, L) {
   return `<div class="cardio">${patrolSVG()}<h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
   <div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div>
   ${items}
+  ${customHTML(L, false)}${offPlanHTML(day, L)}
   <div class="finish"><textarea id="dayNote" placeholder="Заметка">${esc(L?.dayNote || "")}</textarea>
   ${finishButtons(day, L, L?.items?.some(x => x.done), "ПАТРУЛЬ ПРОЙДЕН", "ПАТРУЛЬ ПРОЙДЕН ✦")}</div>`;
 }
@@ -264,12 +373,14 @@ function setRep(i, k, val) {
   else { while (li.reps.length < k) li.reps.push(null); li.reps[k] = val; }
   commit(day, L);
   const after = G.battle(day, L);
-  const crit = !!(SUM.prs[day.date] || {})[i + ":" + k] && Object.keys(SUM.prs[day.date] || {}).length > prBefore;
+  const pr = (SUM.prs[day.date] || {})[i + ":" + k], fresh = !!pr && Object.keys(SUM.prs[day.date] || {}).length > prBefore;
+  const crit = fresh && !pr.custom;
   const dmg = (after.dealt + after.over) - (before.dealt + before.over);
   refreshEx(i); refreshFinish();
   updateStage(true, { dmg, crit });
   if (!before.killed && after.killed) { const m = G.monsterFor(day); toast(m.tavern ? "Спарринг выигран" : G.REVENGE[day.date] ? `Реванш взят: ${m.name} повержен! +${G.XP_REVENGE} опыта` : `${m.name} повержен!`); if (navigator.vibrate) navigator.vibrate([60, 60, 120]); }
   if (crit) toast("Критический удар: личный рекорд!");
+  else if (fresh) toast("Личный рекорд записан");
 }
 
 main.addEventListener("click", e => {
@@ -280,7 +391,7 @@ main.addEventListener("click", e => {
     const [i, k] = s.dataset.set.split(":").map(Number);
     const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
     const r = S.logs[day.date]?.items?.[i]?.reps?.[k];
-    if ((r == null || r === "") && pp.target) setRep(i, k, Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9));
+    if ((r == null || r === "") && pp.target) setRep(i, k, Math.ceil(pp.target / lfOf(it, S.logs[day.date]?.items?.[i]) - 1e-9));
     else openSheet(i, k, s);
     return;
   }
@@ -293,6 +404,55 @@ main.addEventListener("click", e => {
     const tmp = document.createElement("div"); tmp.innerHTML = noteHTML(day, i); n.replaceWith(tmp.firstElementChild);
     refreshFinish();
     return;
+  }
+  const sb = e.target.closest("[data-subbtn]");
+  if (sb) { const i = +sb.dataset.subbtn; subOpen.add(i); refreshEx(i); main.querySelector(`[data-sub="${i}"]`)?.focus(); return; }
+  const us = e.target.closest("[data-unsub]");
+  if (us) {
+    const i = +us.dataset.unsub, day = cur.day, L = S.logs[day.date], li = L?.items?.[i];
+    subOpen.delete(i);
+    if (li && li.sub != null) { delete li.sub; li.weight = day.items[i].weight || ""; commit(day, L); }
+    refreshEx(i); updateStage(false); refreshFinish(); return;
+  }
+  const cs = e.target.closest("[data-cset]");
+  if (cs) { const [j, k] = cs.dataset.cset.split(":").map(Number); openSheet(j, k, cs, true); return; }
+  const ca = e.target.closest("[data-cadd]");
+  if (ca) { const j = +ca.dataset.cadd; openSheet(j, (curLog()?.extra?.[j]?.reps || []).length, ca, true); return; }
+  if (e.target.closest("[data-cnew]")) { const L = curLog(true); (L.extra ||= []).push(blankEx()); commitCur(L); render(); focusLastEx(); return; }
+  const cdel = e.target.closest("[data-cdel]");
+  if (cdel) {
+    const L = curLog(true), j = +cdel.dataset.cdel, x = L.extra[j];
+    if (G.customSets({ extra: [x] }) && !confirm(`Убрать «${x.name || "упражнение"}» со всеми подходами?`)) return;
+    L.extra.splice(j, 1); commitCur(L); render(); return;
+  }
+  const off = e.target.closest("[data-off]");
+  if (off) {
+    const day = cur.day, mode = off.dataset.off;
+    if (mode === "sortie") { location.hash = "#/sortie/" + newSortie(todayISO()); return; }
+    const L = getLog(day, true);
+    if (mode === "replace") {
+      const had = G.battle(day, L).setsDone - G.customSets(L);
+      if (!confirm(`Заменить тренировку своей?${had ? " Плановые подходы этого дня перестанут считаться (они сохранятся — вернёшь план, и они вернутся)." : ""} Убить монстра заменой нельзя: урон не больше ${Math.round(G.REPLACE_CAP * 100)}%, он сбежит и вернётся на реванш.`)) return;
+      L.replaced = true;
+    }
+    if (!(L.extra || []).length || mode === "add") (L.extra ||= []).push(blankEx());
+    commit(day, L); render(); focusLastEx(); return;
+  }
+  if (e.target.closest("#unreplace")) {
+    const day = cur.day, L = getLog(day, true); L.replaced = false;
+    L.extra = (L.extra || []).filter(x => x.name || G.customSets({ extra: [x] }));
+    commit(day, L); render(); return;
+  }
+  if (e.target.closest("#sFinish") || e.target.closest("#sReopen")) {
+    const L = curLog(); L.finished = !L.finished; L.finishedAt = L.finished ? new Date().toISOString() : null;
+    commitSortie(L); render(); if (L.finished) { scrollTo({ top: 0, behavior: "smooth" }); runSync(); }
+    return;
+  }
+  if (e.target.closest("#sDelete")) {
+    const L = curLog();
+    if (!confirm("Удалить вылазку? Её подходы и рекорды перестанут считаться.")) return;
+    Object.assign(L, { deleted: true, extra: [], finished: false });
+    commitSortie(L); location.hash = "#/journey"; return;
   }
   if (e.target.closest("#finish")) {
     const day = cur.day, L = getLog(day, true);
@@ -326,17 +486,38 @@ main.addEventListener("change", e => {
     commit(day, L);
     if (t.dataset.w != null) setTimeout(() => { if (cur?.day === day) { refreshEx(i); updateStage(false); refreshFinish(); } });
   }
-  if (t.id === "performedOn" && cur && t.value) { const L = getLog(cur.day, true); L.performedOn = t.value; commit(cur.day, L); }
-  if (t.id === "dayNote" && cur) { const L = getLog(cur.day, true); L.dayNote = t.value; commit(cur.day, L); }
+  if (t.matches("[data-sub]") && cur?.day) {
+    const day = cur.day, L = getLog(day, true), i = +t.dataset.sub, li = L.items[i], v = t.value.trim();
+    if (v) { if (li.sub == null && li.weight === (day.items[i].weight || "")) li.weight = ""; li.sub = v; } else delete li.sub;
+    commit(day, L); subOpen.delete(i);
+    setTimeout(() => { refreshEx(i); updateStage(false); refreshFinish(); });
+  }
+  if (t.matches("[data-cname],[data-cw],[data-cn]") && cur) {
+    const L = curLog(true), j = +(t.dataset.cname ?? t.dataset.cw ?? t.dataset.cn), x = L.extra[j];
+    if (t.dataset.cname != null) x.name = t.value.trim(); else if (t.dataset.cw != null) x.weight = t.value.trim(); else x.note = t.value.trim();
+    commitCur(L); setTimeout(() => refreshCx(j));
+  }
+  if (t.id === "sTitle" && cur?.sortie) { const L = curLog(); L.title = t.value.trim() || "Вылазка"; commitSortie(L); }
+  if (t.id === "performedOn" && cur && t.value) { const L = curLog(true); L.performedOn = t.value; commitCur(L); if (cur.sortie) render(); }
+  if (t.id === "dayNote" && cur) { const L = curLog(true); L.dayNote = t.value; commitCur(L); }
 });
 
 // ---------- лист ввода повторов ----------
 const sheet = $("#sheet"), sv = $("#sheetVal");
 let sheetAt = null;
-function openSheet(i, k, el) {
+function openSheet(i, k, el, x) {
+  if (x) {
+    const c = curLog()?.extra?.[i] || blankEx(), reps = c.reps || [];
+    sheetAt = { i, k, x: true };
+    $("#sheetTitle").textContent = `${c.name || "Своё упражнение"} · подход ${k + 1}`;
+    sv.value = reps[k] ?? reps[k - 1] ?? ""; fresh = true; sheet.hidden = false;
+    main.querySelectorAll(".set.sel").forEach(c => c.classList.remove("sel"));
+    el?.classList.add("sel");
+    return;
+  }
   const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
   const reps = S.logs[day.date]?.items?.[i]?.reps || [];
-  const need = pp.target && Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9);
+  const need = pp.target && Math.ceil(pp.target / lfOf(it, S.logs[day.date]?.items?.[i]) - 1e-9);
   const val = reps[k] ?? reps[k - 1] ?? need ?? "";
   sheetAt = { i, k };
   $("#sheetTitle").textContent = `${it.name} · подход ${k + 1}${pp.target ? " · план " + pp.target : ""} ${pp.unit !== "повт" ? pp.unit : ""}`;
@@ -357,7 +538,7 @@ function padKey(k) {
   sv.value = v.slice(0, 5);
 }
 // Тап мимо окна ввода (не по клетке подхода) закрывает его без сохранения.
-document.addEventListener("pointerdown", e => { if (!sheet.hidden && !sheet.contains(e.target) && !e.target.closest("[data-set],[data-add]")) closeSheet(); }, true);
+document.addEventListener("pointerdown", e => { if (!sheet.hidden && !sheet.contains(e.target) && !e.target.closest("[data-set],[data-add],[data-cset],[data-cadd]")) closeSheet(); }, true);
 $("#pad").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (b) padKey(b.dataset.k); });
 document.addEventListener("keydown", e => {
   if (sheet.hidden) return;
@@ -372,11 +553,11 @@ document.addEventListener("keydown", e => {
 const num = () => parseFloat(String(sv.value).replace(",", ".")) || 0;
 $("#minus").onclick = () => { sv.value = String(Math.max(0, num() - 1)).replace(".", ","); fresh = false; };
 $("#plus").onclick = () => { sv.value = String(num() + 1).replace(".", ","); fresh = false; };
-$("#sheetClear").onclick = () => { if (sheetAt) { const { i, k } = sheetAt; closeSheet(); setRep(i, k, null); } };
+$("#sheetClear").onclick = () => { if (sheetAt) { const { i, k, x } = sheetAt; closeSheet(); (x ? setXRep : setRep)(i, k, null); } };
 $("#sheetOk").onclick = () => {
   if (!sheetAt) return;
-  const { i, k } = sheetAt, v = parseFloat(String(sv.value).replace(",", "."));
-  closeSheet(); setRep(i, k, v > 0 ? v : null);
+  const { i, k, x } = sheetAt, v = parseFloat(String(sv.value).replace(",", "."));
+  closeSheet(); (x ? setXRep : setRep)(i, k, v > 0 ? v : null);
 };
 
 // =====================================================================
@@ -392,6 +573,9 @@ function renderJourney() {
   <p class="hint" style="text-align:left;margin-top:8px">Неделя засчитана, если все обязательные бои проведены. Таверна (разгрузка) серию не рвёт. Заморозка — на экзамен или болезнь.</p>`;
   const shifts = S.meta.shifts || [];
   if (shifts.length) h += `<h2 class="sec">ПЕРЕНОСЫ</h2><ul class="list">${shifts.map((x, k) => `<li><span>${esc(G.DAY_BY_DATE[x.at]?.title || x.at)} (${fmt(x.at)}) · ${x.days > 0 ? "+" : ""}${x.days} дн. ${x.scope === "all" ? "и весь план после" : "только она"}</span><span><button class="ghostbtn" data-unshift="${k}" style="border:1px solid var(--line2);padding:2px 8px;font-family:var(--caps);letter-spacing:.1em;font-size:13px">отменить</button></span></li>`).join("")}</ul>`;
+  const srt = G.sorties(S.logs);
+  h += `<h2 class="sec">ВЫЛАЗКИ ВНЕ ПЛАНА</h2>${srt.length ? `<ul class="list">${srt.slice().reverse().map(L => `<li><span><a href="#/sortie/${esc(L.date)}">${fmt(G.sortieDate(L))} · ${esc(L.title || "Вылазка")}</a></span><span>${G.customSets(L)} подх.${SUM.perDay[L.date]?.xp ? ` · +${SUM.perDay[L.date].xp}` : ""}</span></li>`).join("")}</ul>` : ""}
+  <button class="act" id="sNew">+ НОВАЯ ВЫЛАЗКА</button><p class="hint">Тренировка не из плана: опыт за подходы (не больше ${G.SORTIE_XP_MAX} в день), рекорды. Заменить или дополнить тренировку дня — внизу её экрана.</p>`;
   let lastBlock = null;
   for (const w of G.WEEKS) {
     const bn = +(/Блок (\d+)/.exec(w.block) || [0, 0])[1];
@@ -401,7 +585,7 @@ function renderJourney() {
       const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
       const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : patrolSVG();
       return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
-    }).join("");
+    }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
     h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
@@ -411,6 +595,7 @@ function renderJourney() {
   main.innerHTML = h;
 }
 main.addEventListener("click", e => {
+  if (e.target.closest("#sNew")) { location.hash = "#/sortie/" + newSortie(todayISO()); return; }
   const u = e.target.closest("[data-unshift]");
   if (u) { S.meta.shifts.splice(+u.dataset.unshift, 1); touchMeta(); recompute(); renderJourney(); return; }
   const f = e.target.closest("[data-freeze]"); if (!f) return;
@@ -765,6 +950,8 @@ function renderSettings() {
 function renderSettingsMsg() { const m = $("#cfgMsg"); if (m) m.textContent = sync.msg || ""; }
 
 // ---------- старт ----------
+// Подсказки названий для своих упражнений: те же имена, что в плане, — тогда рекорды и графики общие.
+document.body.insertAdjacentHTML("beforeend", `<datalist id="exNames">${[...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name)).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort().map(n => `<option value="${esc(n)}">`).join("")}</datalist>`);
 recompute(); renderTop(); renderSync(); render();
 if (S.cfg.token) runSync().then(() => { recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
 else scheduleSync();
