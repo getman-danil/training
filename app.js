@@ -589,7 +589,7 @@ function renderJourney() {
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
     h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
-      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · вылазка в " + esc(G.SWAMP.name.toLowerCase()) : ""}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
+      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · " + esc(G.SWAMP.name) : ""}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
       <div class="r">${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
   }
   main.innerHTML = h;
