@@ -41,16 +41,15 @@ export const MONSTERS = {
   // Вожаки семей — как Грызь: именные, на два уровня выше.
   "lizard-chief": M("lizard-chief", "Вождь ящеров", "lizard-chief", { chief: true }),
   "treant-ancient": M("treant-ancient", "Древний энт", "treant-ancient", { chief: true }),
-  // Картинки боссов и хозяина таверны появятся позже: пока силуэт похожего монстра.
-  "boss-goblin-king": M("boss-goblin-king", "Король гоблинов", "goblin-chief", { boss: true, placeholder: true }),
-  "boss-orc-warlord": M("boss-orc-warlord", "Вождь орков", "orc-berserker", { boss: true, placeholder: true }),
-  "boss-ancient-dragon": M("boss-ancient-dragon", "Древний дракон", "dragon-wyvern", { boss: true, placeholder: true }),
+  "boss-goblin-king": M("boss-goblin-king", "Король гоблинов", "boss-goblin-king", { boss: true }),
+  "boss-orc-warlord": M("boss-orc-warlord", "Вождь орков", "boss-orc-warlord", { boss: true }),
+  "boss-ancient-dragon": M("boss-ancient-dragon", "Древний дракон", "boss-ancient-dragon", { boss: true }),
   "boss-demon-lord": M("boss-demon-lord", "Повелитель демонов", "boss-demon-lord", { boss: true }),
   "boss-minotaur-king": M("boss-minotaur-king", "Король минотавров", "boss-minotaur-king", { boss: true }),
   // Боссы событий: приходят в свои даты вместо монстра обычной тренировки.
   "boss-lich": M("boss-lich", "Лич-экзаменатор", "boss-lich", { event: true }),
   "boss-frost-giant": M("boss-frost-giant", "Ледяной великан", "boss-frost-giant", { event: true }),
-  "tavern-keeper": M("tavern-keeper", "Хозяин таверны", "", { tavern: true, placeholder: true, img: null }),
+  "tavern-keeper": M("tavern-keeper", "Хозяин таверны", "tavern-keeper", { tavern: true }),
 };
 
 // ---------- элита ----------

@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v25";
+const VERSION = "v26";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -53,6 +53,11 @@ const FILES = [
   "assets/monsters/minotaur-keeper.webp",
   "assets/monsters/lizard-chief.webp",
   "assets/monsters/treant-ancient.webp",
+  "assets/monsters/boss-goblin-king.webp",
+  "assets/monsters/boss-orc-warlord.webp",
+  "assets/monsters/boss-ancient-dragon.webp",
+  "assets/monsters/tavern-keeper.webp",
+  "assets/monsters/patrol.webp",
   "assets/monsters/boss-demon-lord.webp",
   "assets/monsters/boss-minotaur-king.webp",
   "assets/monsters/boss-lich.webp",

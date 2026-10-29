@@ -140,7 +140,7 @@ function stageHTML(day) {
   const m = G.monsterFor(day);
   const moon = G.isMoon(day);
   const cls = [m.boss || m.event ? "boss" : m.tavern ? "tavern" : m.elite ? "elite" : "", moon ? "moon" : "", m.event ? "event" : ""].join(" ");
-  const art = m.tavern ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
+  const art = m.tavern && !m.img ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
   const rv = G.REVENGE[day.date];
   const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.event ? "СОБЫТИЕ" : moon ? "КРОВАВАЯ ЛУНА" : m.elite ? "ЭЛИТА" : m.chief ? "ВОЖАК" : "";
   return `<div class="stage ${cls}" id="stage">
@@ -343,15 +343,9 @@ const subOpen = new Set();
 const lfOf = (it, li) => (String(li?.sub || "").trim() ? 1 : G.loadFactor(it, li));
 function focusLastEx() { const ins = main.querySelectorAll("[data-cname]"); const el = ins[ins.length - 1]; if (el && !el.value) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }
 
-// Пока нет картинки патруля: факел дозорного.
-function patrolSVG() {
-  return `<svg class="torch" viewBox="0 0 40 40" aria-hidden="true"><path d="M17 19h6l-2 18h-2z" fill="#4a3220" stroke="#c9a24a" stroke-width="1"/><rect x="15.5" y="17" width="9" height="3" fill="#c9a24a"/>
-  <path d="M20 3c4 5 6 8 4.5 11.5c-.8 2-2.6 3-4.5 3s-3.7-1-4.5-3C14 10 16 8 20 3z" fill="#ff6a1a"/><path d="M20 8c2 3 3 5 2 7c-.5 1-1.2 1.5-2 1.5s-1.5-.5-2-1.5c-1-2 0-4 2-7z" fill="#ffd27a"/></svg>`;
-}
-
 function cardioHTML(day, L) {
   const items = day.items.map((it, i) => noteHTML(day, i)).join("");
-  return `<div class="cardio">${patrolSVG()}<h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
+  return `<div class="cardio"><img class="patrolart" src="assets/monsters/patrol.webp" alt="Тропа в тумане"><h2>ПАТРУЛЬ</h2><p>Монстров нет — разведка местности. +${G.XP_CARDIO} опыта.</p></div>
   <div class="dayhead"><h1>${esc(day.title)}</h1><p>${dayWhen(day)}${weekNote(day)}</p></div>
   ${items}
   ${customHTML(L, false)}${offPlanHTML(day, L)}
@@ -585,7 +579,7 @@ function renderJourney() {
     const st = sk.weeks.find(x => x.n === w.n);
     const mons = w.days.map(d => {
       const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
-      const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : patrolSVG();
+      const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : `<img src="assets/monsters/patrol.webp" alt="">`;
       return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${m?.elite ? "elite" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
     }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
     const manual = (S.meta.freezes || []).includes(w.n);
