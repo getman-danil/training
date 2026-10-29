@@ -3,7 +3,7 @@
   "week": 6,
   "block": "Блок 1. Возвращение",
   "title": "ТЕСТ",
-  "performedOn": "2026-10-29",
+  "performedOn": null,
   "finished": false,
   "finishedAt": null,
   "dayNote": "",
@@ -67,5 +67,5 @@
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793296552900
+  "updatedAt": 1793298830321
 }
