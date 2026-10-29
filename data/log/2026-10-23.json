@@ -58,6 +58,8 @@
       "planWeight": "8 кг",
       "weight": "8 кг",
       "reps": [
+        10,
+        10,
         10
       ],
       "note": ""
@@ -85,9 +87,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 576,
+    "dealt": 672,
     "overkill": 170,
     "killed": false
   },
-  "updatedAt": 1793291399485
+  "updatedAt": 1793291744189
 }
