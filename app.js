@@ -114,10 +114,10 @@ function renderBattle(date) {
 
 function stageHTML(day) {
   const m = G.monsterFor(day);
-  const cls = m.boss ? "boss" : m.tavern ? "tavern" : "";
+  const cls = m.boss ? "boss" : m.tavern ? "tavern" : m.elite ? "elite" : "";
   const art = m.tavern ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
   const rv = G.REVENGE[day.date];
-  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.id === "goblin-chief" ? "ВОЖАК" : "";
+  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.elite ? "ЭЛИТА" : m.id === "goblin-chief" ? "ВОЖАК" : "";
   return `<div class="stage ${cls}" id="stage">
     <div class="fog"></div>
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
@@ -152,8 +152,8 @@ function updateStage(animate, info) {
   const host = $("#bannerHost");
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
   const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
-  const found = loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "";
-  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
+  const found = (loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "") + (pd?.trophy ? `<br>трофей: <span class="legendary">${esc(pd.trophy)}</span>` : "");
+  if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : m.elite ? "ЭЛИТА ПОВЕРЖЕНА" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
@@ -400,7 +400,7 @@ function renderJourney() {
     const mons = w.days.map(d => {
       const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
       const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : patrolSVG();
-      return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
+      return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${m?.elite ? "elite" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
     }).join("");
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
@@ -487,6 +487,7 @@ function renderHero() {
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
+  <p>Элита: иногда обычный монстр приходит матёрым — та же тварь в золотой ауре, на уровень выше. Убить его тоже можно только выполнив план; за это ×${G.ELITE_KILL} опыта за убийство, ×${G.ELITE_GOLD} золота и трофей в коллекцию Летописи.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p>
   <p>За достижения, новые титулы и первое убийство каждого вида монстров дают награды — их забирают в Летописи. Бафы действуют несколько дней с того дня, как награду забрали: ${Object.values(G.BUFFS).map(b => `${b.name} — ${b.desc}`).join(", ")}. Тот же баф ещё раз продлевает срок. Часть достижений вместо награды даёт почётный титул: его эффект работает, пока титул надет, носить можно один. Изученный вид монстров даёт +${Math.round(G.STUDY * 100)}% опыта в боях с ним. За самые трудные достижения и титул «Легенда» — уникальные вещи: +1 к характеристике и два особых эффекта. Всё действует с того дня, как награду забрали.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
@@ -511,6 +512,12 @@ function renderChronicle() {
     const k = s.killed[m.id] || 0, r = rw["m:" + m.id];
     const st = r?.at ? "изучен" : k ? `<button class="claim" data-claim="${r.id}">изучить</button>` : "";
     h += `<div class="beast ${k ? "" : "unseen"} ${r?.at ? "studied" : ""}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span>${st ? `<span class="st">${st}</span>` : ""}</div>`;
+  }
+  // Элита: отдельная строка бестиария на каждый вид, трофей — просто в коллекцию.
+  h += `</div><h2 class="sec">ЭЛИТА И ТРОФЕИ</h2><p class="sub">Иногда монстр приходит матёрым: на уровень выше, ×${G.ELITE_KILL} опыта за убийство, ×${G.ELITE_GOLD} золота и трофей. Убито элиты: ${s.eliteKills}.</p><div class="beasts">`;
+  for (const id of G.ELITE_SPECIES) {
+    const m = G.eliteOf(G.MONSTERS[id]), k = s.eliteKilled[id] || 0;
+    h += `<div class="beast elite ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : "не встречен"}</span>${k ? `<span class="st">${esc(m.trophy)}</span>` : ""}</div>`;
   }
   // Почётные титулы: получены за достижения, носится один. Пустой id — снова носить титул уровня.
   h += `</div><h2 class="sec">ПОЧЁТНЫЕ ТИТУЛЫ</h2><p class="sub">Даются вместо награды за некоторые достижения. Эффект работает, пока титул надет.</p><ul class="list titles">${Object.entries(G.HONOR).map(([id, t]) => {

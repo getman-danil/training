@@ -32,6 +32,27 @@ export const MONSTERS = {
   "tavern-keeper": M("tavern-keeper", "Хозяин таверны", "", { tavern: true, placeholder: true, img: null }),
 };
 
+// ---------- элита ----------
+// Изредка обычный монстр приходит матёрым: та же картинка в золотой ауре, на уровень выше.
+// Убить его, как и любого, = выполнить план целиком; награда — ×1,5 опыта за убийство, ×2 золота и трофей в коллекцию.
+// Выпадает детерминированно по дате дня, поэтому одинаково на всех устройствах. Вожак Грызь — именной, элитой не бывает.
+export const ELITE_CHANCE = 0.08, ELITE_KILL = 1.5, ELITE_GOLD = 2;
+const ELITE = {
+  "goblin-raider": ["Матёрый гоблин-налётчик", "Зазубренный тесак"],
+  "goblin-archer": ["Матёрый гоблин-лучник", "Колчан с чёрными перьями"],
+  "goblin-shaman": ["Матёрый гоблин-шаман", "Посох с бубенцами"],
+  "undead-skeleton": ["Древний скелет-страж", "Щит с гербом павшего рода"],
+  "undead-ghoul": ["Матёрый упырь", "Коготь упыря"],
+  "undead-wraith": ["Плакальщик-призрак", "Саван, тающий в руках"],
+  "orc-grunt": ["Матёрый орк-рубака", "Секира с зарубками"],
+  "orc-berserker": ["Бешеный орк-берсерк", "Боевая раскраска в склянке"],
+  "orc-warg-rider": ["Вожак варгов", "Шкура чёрного варга"],
+  "dragon-drake": ["Огненный драконид", "Тлеющая чешуя"],
+  "dragon-wyvern": ["Матёрая виверна", "Ядовитое жало"],
+};
+export function eliteOf(m) { return m && ELITE[m.id] ? { ...m, elite: true, name: ELITE[m.id][0], trophy: ELITE[m.id][1] } : m; }
+export const ELITE_SPECIES = Object.keys(ELITE);
+
 export const DUNGEONS = {
   1: { name: "Логово гоблинов", pool: ["goblin-raider", "goblin-archer", "goblin-shaman"] },
   2: { name: "Склеп", pool: ["undead-skeleton", "undead-ghoul", "undead-wraith"] },
@@ -105,8 +126,8 @@ export function monsterFor(day) {
   if (BOSS_BY_DATE[day.date]) return MONSTERS[BOSS_BY_DATE[day.date]];
   if (MINIBOSS_BY_DATE[day.date]) return MONSTERS[MINIBOSS_BY_DATE[day.date]];
   if (isTavern(day)) return MONSTERS["tavern-keeper"];
-  if (REVENGE[day.date]) return MONSTERS[REVENGE[day.date].id];
-  return planMonster(day);
+  if (REVENGE[day.date]) { const r = REVENGE[day.date]; return r.elite ? eliteOf(MONSTERS[r.id]) : MONSTERS[r.id]; }
+  return isElite(day) ? eliteOf(planMonster(day)) : planMonster(day);
 }
 function packIndex(day) {
   const pool = dungeon(day.blockN).pool;
@@ -114,6 +135,10 @@ function packIndex(day) {
   let k = t.startsWith("А") ? 0 : t.startsWith("Б") ? 1 : 2;
   if (pool[2] === pool[0] && k === 2) k = day.week % 2;   // в горах всего два дракона — чередуем
   return k;
+}
+export function isElite(day) {
+  if (!regular(day) || REVENGE[day.date]) return false;
+  return !!ELITE[planMonster(day).id] && hash01(day.date + "#elite") < ELITE_CHANCE;
 }
 function planMonster(day) { return MONSTERS[dungeon(day.blockN).pool[packIndex(day)]]; }
 // Ожидаемый уровень героя на каждый день плана: всё сделано ровно по плану, без перков и бонусов.
@@ -145,7 +170,7 @@ export function monsterLevel(day) {
   if (MINIBOSS_BY_DATE[day.date]) return base + 2;
   if (isTavern(day)) return base;
   if (REVENGE[day.date]) return monsterLevel(DAY_BY_DATE[REVENGE[day.date].from]) + REVENGE[day.date].n;
-  return Math.max(1, base - 1 + packIndex(day));
+  return Math.max(1, base - 1 + packIndex(day)) + (isElite(day) ? 1 : 0);
 }
 export function hpMult(day) {
   if (isCardio(day)) return 1;
@@ -172,7 +197,8 @@ export function computeRevenge(logs, today, meta = {}) {
     if (prev && prev.n >= (hasPerk(bd, "headhunter") ? 2 : 1)) return;   // вернувшийся монстр сбежал снова — больше не придёт
     const next = days.slice(k + 1).find(x => x.on > d.on);
     if (!next || !regular(next) || daysBetween(d.on, next.on) > REVENGE_WINDOW + bd.stats.wil || logs[next.date]?.skipped) return;
-    REVENGE[next.date] = { id: monsterFor(d).id, from: prev ? prev.from : d.date, n: prev ? prev.n + 1 : 1 };
+    const fm = monsterFor(d);
+    REVENGE[next.date] = { id: fm.id, elite: !!fm.elite, from: prev ? prev.from : d.date, n: prev ? prev.n + 1 : 1 };
   });
   return REVENGE;
 }
@@ -525,7 +551,7 @@ export function summarize(logs, meta, today) {
   let revenges = 0, finds = 0, gold = 0;
   const loot = [];
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
-  const killed = {}, bossKills = [], perDay = {};
+  const killed = {}, bossKills = [], perDay = {}, eliteKilled = {};
   const tavernBuffWeeks = new Set(), weekFirst = new Set();
   // Награды: заряды Вдохновения расходуются по одному на бой, изученные виды дают бонус с даты, когда их забрали.
   const claims = claimsOf(meta);
@@ -565,12 +591,13 @@ export function summarize(logs, meta, today) {
     const when = whenOf(d, L);
     if (b.killed) {
       // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
+      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
       dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
+      if (m?.elite) kx *= ELITE_KILL;
       if (nPR && hasPerk(bd, "precise")) kx += 30;
       dx += Math.round(kx * mod);
-      kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (b.over >= b.hp * OVERKILL_CAP) overkills++;
+      kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (m.elite) eliteKilled[m.id] = (eliteKilled[m.id] || 0) + 1; if (b.over >= b.hp * OVERKILL_CAP) overkills++;
       if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0) + (hasPerk(bd, "h-revenge") ? 40 : 0); revenges++; }
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
       if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
@@ -592,7 +619,7 @@ export function summarize(logs, meta, today) {
     if (inspired) mul += hasPerk(bd, "u-inspire") ? INSPIRE_U : BUFFS.ins.val;
     dx = Math.round(dx * mul);
     if (late) nightOwl++;
-    xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
+    xp += dx; perDay[d.date] = { xp: dx, gold: dg, trophy: b.killed && m?.elite ? m.trophy : null, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
   // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
   for (const w of WEEKS) {
@@ -619,8 +646,8 @@ export function summarize(logs, meta, today) {
   const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const findNow = findChances(rawFind(build, on("luck", today)));
-  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
+  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, eliteKilled, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
+  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, eliteKilled, eliteKills: Object.values(eliteKilled).reduce((a, b) => a + b, 0), bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
   res.rewards = rewardList(res, meta);
   res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);
   res.honor = honorAt(meta, "9999-12-31");
@@ -674,6 +701,9 @@ export function achievements(s) {
     A("buy1", "Покупатель", "Купить вещь у торговца", s.bought >= 1),
     A("forge1", "Кузнец", "Сковать редкую вещь", s.forged >= 1),
     A("mythic", "Миф", "Пробудить легендарную вещь до мифической", s.mythics >= 1),
+    A("elite1", "Охотник на матёрых", "Убить элитного монстра", Object.keys(s.eliteKilled).length >= 1),
+    A("elite5", "Гроза элиты", "Убить 5 элитных монстров", Object.values(s.eliteKilled).reduce((a, b) => a + b, 0) >= 5),
+    A("trophies", "Коллекционер", "Собрать трофеи 5 разных элитных монстров", Object.keys(s.eliteKilled).length >= 5),
     A("beasts", "Знаток тварей", "Убить хотя бы по разу всех 12 обычных монстров", Object.values(MONSTERS).filter(m => !m.boss && !m.tavern && m.id in s.killed).length >= 12),
   ];
 }
@@ -703,6 +733,7 @@ export const ACH_REWARDS = {
   boss1: R({ ins: 7 }), boss2: R({ ins: 7, gb: 5 }), boss3: R({ item: "fang" }), bossAll: R({ gold: 50, ins: 14 }),
   lvl5: R({ gold: 10, ins: 3 }), lvl10: R({ ins: 7 }), perk1: R({ ins: 3 }), legend: R({ gold: 20 }), find5: R({ gb: 7 }),
   buy1: R({ gold: 10 }), forge1: R({ gold: 10 }), mythic: R({ ins: 14 }), beasts: R({ gold: 20, lk: 7 }),
+  elite1: R({ gold: 15, ins: 3 }), elite5: R({ gb: 7, ins: 5 }), trophies: R({ gold: 30, lk: 7 }),
 };
 // Награда за титул: индекс в TITLES (0 — «Странник», его не дают).
 export const TITLE_REWARDS = [null, R({ gold: 10, ins: 3 }), R({ ins: 5 }), R({ gold: 15, lk: 5 }), R({ ins: 5, gb: 5 }), R({ xp: 100, ins: 5 }),
