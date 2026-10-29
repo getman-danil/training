@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "В — махи + объём",
   "performedOn": "2026-10-29",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-29T16:58:50.727Z",
   "dayNote": "",
   "items": [
     {
@@ -87,6 +87,7 @@
         1,
         1,
         1,
+        1,
         1
       ],
       "note": ""
@@ -97,19 +98,9 @@
     "monster": "Гоблин-лучник",
     "hp": 1008,
     "dealt": 1008,
-    "overkill": 266,
+    "overkill": 218,
     "killed": true
   },
-  "updatedAt": 1793293020743,
-  "extra": [
-    {
-      "name": "Скакалка",
-      "weight": "",
-      "reps": [
-        1,
-        1
-      ],
-      "note": ""
-    }
-  ]
+  "updatedAt": 1793293130727,
+  "extra": []
 }
