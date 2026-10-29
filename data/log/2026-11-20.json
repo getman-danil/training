@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-20",
+  "week": 6,
+  "block": "Блок 1. Возвращение",
+  "title": "ТЕСТ",
+  "performedOn": "2026-10-29",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Разминка 10 мин + 2 подводящих подхода",
+      "done": false
+    },
+    {
+      "type": "ex",
+      "name": "ТЕСТ: подтягивания на максимум",
+      "plan": "1×макс",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "ТЕСТ: отжимания на брусьях на максимум",
+      "plan": "1×макс",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "ТЕСТ: отжимания от пола на максимум",
+      "plan": "1×макс",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "ТЕСТ: скакалка без остановки",
+      "plan": "1×макс",
+      "planWeight": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "note",
+      "text": "Замеры: вес утром, талия по пупку, фото",
+      "done": false
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Король гоблинов",
+    "hp": 2160,
+    "dealt": 0,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1793296515348
+}
