@@ -35,6 +35,8 @@ const FILES = [
   "assets/monsters/elite-undead-ghoul.webp",
   "assets/monsters/elite-undead-wraith.webp",
   "assets/monsters/elite-dragon-drake.webp",
+  "assets/monsters/elite-orc-grunt.webp",
+  "assets/monsters/elite-orc-berserker.webp",
   "assets/monsters/goblin-chief.webp",
   "assets/monsters/goblin-raider.webp",
   "assets/monsters/goblin-shaman.webp",
