@@ -88,6 +88,7 @@
         1,
         1,
         1,
+        1,
         1
       ],
       "note": ""
@@ -98,8 +99,8 @@
     "monster": "Гоблин-лучник",
     "hp": 1008,
     "dealt": 1008,
-    "overkill": 218,
+    "overkill": 266,
     "killed": true
   },
-  "updatedAt": 1793292373251
+  "updatedAt": 1793292381124
 }
