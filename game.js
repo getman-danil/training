@@ -38,15 +38,15 @@ export const MONSTERS = {
   "minotaur-brute": M("minotaur-brute", "Минотавр-рубака", "minotaur-brute"),
   "minotaur-charger": M("minotaur-charger", "Минотавр-таран", "minotaur-charger"),
   "minotaur-keeper": M("minotaur-keeper", "Хранитель лабиринта", "minotaur-keeper"),
-  // Вожаки семей — как Грызь: именные, на два уровня выше. Картинки появятся позже: пока силуэт похожего монстра.
-  "lizard-chief": M("lizard-chief", "Вождь ящеров", "lizard-spearman", { chief: true, placeholder: true }),
-  "treant-ancient": M("treant-ancient", "Древний энт", "treant-elder", { chief: true, placeholder: true }),
+  // Вожаки семей — как Грызь: именные, на два уровня выше.
+  "lizard-chief": M("lizard-chief", "Вождь ящеров", "lizard-chief", { chief: true }),
+  "treant-ancient": M("treant-ancient", "Древний энт", "treant-ancient", { chief: true }),
   // Картинки боссов и хозяина таверны появятся позже: пока силуэт похожего монстра.
   "boss-goblin-king": M("boss-goblin-king", "Король гоблинов", "goblin-chief", { boss: true, placeholder: true }),
   "boss-orc-warlord": M("boss-orc-warlord", "Вождь орков", "orc-berserker", { boss: true, placeholder: true }),
   "boss-ancient-dragon": M("boss-ancient-dragon", "Древний дракон", "dragon-wyvern", { boss: true, placeholder: true }),
-  "boss-demon-lord": M("boss-demon-lord", "Повелитель демонов", "demon-executioner", { boss: true, placeholder: true }),
-  "boss-minotaur-king": M("boss-minotaur-king", "Король минотавров", "minotaur-brute", { boss: true, placeholder: true }),
+  "boss-demon-lord": M("boss-demon-lord", "Повелитель демонов", "boss-demon-lord", { boss: true }),
+  "boss-minotaur-king": M("boss-minotaur-king", "Король минотавров", "boss-minotaur-king", { boss: true }),
   "tavern-keeper": M("tavern-keeper", "Хозяин таверны", "", { tavern: true, placeholder: true, img: null }),
 };
 
