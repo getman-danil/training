@@ -512,9 +512,13 @@ main.addEventListener("change", e => {
 });
 
 // ---------- список упражнений для своих и заменённых ----------
-// Тап по названию открывает список: упражнения из плана и свои, которые уже записывал. Набор текста фильтрует список,
+// Тап по названию открывает список: свои, которые уже записывал, и упражнения из плана по группам. Набор текста фильтрует список,
 // а любое своё название можно просто вписать. Имена из плана — тогда рекорды и графики общие.
 const PLAN_EX = [...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name) && !i.name.includes(":")).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort((a, b) => a.localeCompare(b, "ru"));
+// Группы для списка: проверяются по порядку, «Румынская тяга» попадает в ноги раньше, чем в тягу.
+const EX_GROUPS = [["Кардио", /скакалк/i], ["Кор", /планк|подъ[её]м|носки/i], ["Руки", /сгибани/i], ["Ноги", /присед|выпад|румынск|мост|мах|сплит/i], ["Тяга", /подтяг|тяга/i], ["Жим", /отжим|жим|брус/i]];
+const EX_GROUP_ORDER = ["Тяга", "Жим", "Ноги", "Кор", "Руки", "Кардио", "Другое"];
+const exGroup = n => (EX_GROUPS.find(([, re]) => re.test(n)) || ["Другое"])[0];
 function ownEx() {
   const plan = new Set(PLAN_EX.map(G.normName)), own = new Map();
   for (const L of Object.values(S.logs)) {
@@ -537,7 +541,7 @@ function showExList(inp) {
   inp.closest(".h").insertAdjacentHTML("afterend", `<div class="exlist" id="exList">
     ${typed && !exact ? `<button type="button" class="exopt mine" data-exopt="${esc(typed)}">+ своё: «${esc(typed)}»</button>` : ""}
     ${own.length ? `<div class="exgrp">свои</div>${own.map(row).join("")}` : ""}
-    ${plan.length ? `<div class="exgrp">из плана</div>${plan.map(row).join("")}` : ""}
+    ${EX_GROUP_ORDER.map(g => { const ns = plan.filter(n => exGroup(n) === g); return ns.length ? `<div class="exgrp">${g}</div>${ns.map(row).join("")}` : ""; }).join("")}
     ${!typed ? `<div class="exgrp">или впиши своё название в поле</div>` : ""}
   </div>`);
 }
