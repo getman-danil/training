@@ -97,15 +97,18 @@
     "monster": "Гоблин-лучник",
     "hp": 1008,
     "dealt": 1008,
-    "overkill": 170,
+    "overkill": 266,
     "killed": true
   },
-  "updatedAt": 1793293006073,
+  "updatedAt": 1793293020743,
   "extra": [
     {
-      "name": "",
+      "name": "Скакалка",
       "weight": "",
-      "reps": [],
+      "reps": [
+        1,
+        1
+      ],
       "note": ""
     }
   ]
