@@ -31,7 +31,7 @@
       "planWeight": "свой вес",
       "weight": "свой вес",
       "reps": [
-        10
+        null
       ],
       "note": ""
     },
@@ -56,16 +56,16 @@
     {
       "type": "note",
       "text": "Замеры: вес утром, талия по пупку, фото",
-      "done": false
+      "done": true
     }
   ],
   "skipped": false,
   "game": {
     "monster": "Король гоблинов",
     "hp": 2160,
-    "dealt": 540,
+    "dealt": 0,
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793296539444
+  "updatedAt": 1793296546781
 }
