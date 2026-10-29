@@ -56,7 +56,7 @@
     {
       "type": "note",
       "text": "Замеры: вес утром, талия по пупку, фото",
-      "done": true
+      "done": false
     }
   ],
   "skipped": false,
@@ -67,5 +67,5 @@
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793296546781
+  "updatedAt": 1793296552900
 }
