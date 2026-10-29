@@ -235,8 +235,8 @@ export function battle(day, log) {
 //   без золота, находок и серии. Рекорды из своих упражнений записываются, но крита (опыта) не дают.
 // log.extra = [{ name, weight, reps: [...], note }]
 export const REPLACE_CAP = 0.7;
-// Замена одного упражнения: оно даёт не больше SUB_CAP своего урона, так что с заменой монстра не убить — он сбегает на реванш.
-export const SUB_CAP = 0.7;
+// Замена одного упражнения: подход засчитывается полностью, если повторов не меньше плановых (решено 29.10: с заменой убить можно).
+export const SUB_CAP = 1;
 export const SORTIE_XP_SET = 2, SORTIE_XP_MAX = XP_CARDIO;
 export const isSortieKey = k => typeof k === "string" && k.startsWith("x-");
 export const sortieDate = L => L.performedOn || L.date.slice(2, 12);

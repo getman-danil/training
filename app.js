@@ -248,7 +248,7 @@ function exHTML(day, i, b) {
   const sub = li?.sub != null || subOpen.has(i);
   const head = sub
     ? `<div class="h"><input class="cname" data-sub="${i}" list="exNames" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
-    <div class="spec">вместо: ${esc(it.name)} · замена даёт не больше ${Math.round(G.SUB_CAP * 100)}% урона упражнения, рекорд без крита</div>`
+    <div class="spec">вместо: ${esc(it.name)} · подход засчитан, если повторов не меньше плановых · рекорд без крита</div>`
     : `<div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
     <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit} <button class="sublink" data-subbtn="${i}">заменить</button></div>`;
   return `<div class="ex ${done ? "done" : ""} ${sub ? "cx" : ""}" data-ex="${i}">
