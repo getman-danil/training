@@ -19,7 +19,9 @@
       "plan": "1×макс",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        null
+      ],
       "note": ""
     },
     {
@@ -28,7 +30,9 @@
       "plan": "1×макс",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        null
+      ],
       "note": ""
     },
     {
@@ -63,5 +67,5 @@
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793296515348
+  "updatedAt": 1793296532358
 }
