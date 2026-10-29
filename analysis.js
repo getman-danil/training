@@ -1,6 +1,6 @@
 // Встроенный разбор прогресса: работает без Claude и без интернета.
 // Ряды по упражнениям, выполнение плана по неделям и простые правила-подсказки.
-import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal, isSortieKey, sortieDate } from "./game.js";
+import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal, isSortieKey, sortieDate, monsterFor, isOptional } from "./game.js";
 
 // Ряд по каждому упражнению: лучшая попытка, сумма повторов, вес, доля плана.
 // Свои упражнения (дополнение, замена, вылазка) идут в те же ряды по названию, но без доли плана.
@@ -84,3 +84,50 @@ export function hints(logs, today) {
 
 const pct = x => Math.round(x * 100) + "%";
 export function addDays(iso, n) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+
+// ---------- итоги года ----------
+// Всё считается из журнала и сводки героя: сколько сделано, рекорды «было → стало», лучшие бои, календарь.
+const FAMILY = [["goblin", "Гоблины"], ["undead", "Нежить"], ["orc", "Орки"], ["dragon", "Драконы"], ["lizard", "Ящеролюди"], ["demon", "Демоны"], ["treant", "Энты"], ["minotaur", "Минотавры"], ["boss", "Боссы"]];
+export function yearStats(logs, sum, today) {
+  let fights = 0, reps = 0, tonnage = 0, sets = 0;
+  const cal = {};   // дата (фактическая) → kill | fled | cardio | skip | plan
+  for (const d of DAYS) {
+    const L = logs[d.date];
+    if (isCardio(d)) {
+      if (L && (L.finished || L.items?.some(x => x.done))) cal[d.on] = "cardio";
+      else if (!isOptional(d)) cal[d.on] ||= "plan";
+      continue;
+    }
+    if (L?.skipped) { cal[d.on] = "skip"; continue; }
+    const b = battle(d, L);
+    if (b.setsDone && (L.finished || d.on < today)) { fights++; cal[L.performedOn || d.on] = b.killed ? "kill" : "fled"; }
+    else if (!isOptional(d)) cal[d.on] ||= "plan";
+  }
+  // Объём: все подходы, включая свои упражнения и вылазки. Тоннаж — только подходы с весом в кг.
+  for (const [key, L] of Object.entries(logs)) {
+    if (!L || L.deleted || L.skipped || (!DAY_BY_DATE[key] && !isSortieKey(key))) continue;
+    const day = DAY_BY_DATE[key];
+    const rows = [...(L.replaced ? [] : (L.items || []).map((li, i) => [li, day?.items[i]])), ...(L.extra || []).map(x => [x, null])];
+    for (const [li, it] of rows) {
+      const w = kg(li?.weight ?? it?.weight ?? "");
+      for (const r of li?.reps || []) { if (!(+r > 0)) continue; reps += +r; sets++; if (w > 0) tonnage += +r * w; }
+    }
+    if (!day) cal[sortieDate(L)] ||= "cardio";
+  }
+  const series = exerciseSeries(logs).filter(s => s.points.length >= 1);
+  const records = series.map(s => {
+    const p = s.points, first = p[0], best = p.reduce((a, x) => (x.kg > a.kg || (x.kg === a.kg && x.best > a.best) ? x : a), p[0]);
+    return { name: s.name, unit: s.unit, n: p.length, from: first, to: best, grew: best.kg > first.kg || best.best > first.best };
+  }).sort((a, b) => b.n - a.n);
+  const days = Object.entries(sum.perDay).filter(([d]) => DAY_BY_DATE[d] && sum.perDay[d].battle);
+  const top = (f) => days.reduce((a, x) => (f(x[1]) > (a ? f(a[1]) : -1) ? x : a), null);
+  const bestXp = top(p => p.xp), bestOver = top(p => p.battle.hp ? p.battle.over / p.battle.hp : 0), bestCrit = top(p => p.prs || 0);
+  // Хронология больших побед: боссы, вожаки, боссы событий.
+  const big = days.filter(([d, p]) => { const m = monsterFor(DAY_BY_DATE[d]); return p.battle.killed && m && (m.boss || m.chief || m.event); })
+    .map(([d, p]) => ({ date: DAY_BY_DATE[d].on, name: monsterFor(DAY_BY_DATE[d]).name, xp: p.xp })).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const families = FAMILY.map(([k, name]) => ({ name, n: Object.entries(sum.killed).filter(([id]) => id.startsWith(k)).reduce((a, [, v]) => a + v, 0) })).filter(f => f.n);
+  const wk = weekly(logs, today).filter(w => !w.current);
+  const planPct = wk.length ? wk.reduce((a, w) => a + Math.min(w.pct, 1), 0) / wk.length : null;
+  const pick = x => x && { date: DAY_BY_DATE[x[0]].on, name: monsterFor(DAY_BY_DATE[x[0]])?.name || "", ...x[1] };
+  return { fights, reps, sets, tonnage: Math.round(tonnage), planPct, records, bestXp: pick(bestXp), bestOver: pick(bestOver), bestCrit: bestCrit && bestCrit[1].prs ? pick(bestCrit) : null, big, families, cal };
+}

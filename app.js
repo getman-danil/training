@@ -1,7 +1,7 @@
 // Интерфейс: Бой (тренировка дня с монстром), Поход (недели и подземелья), Прогресс (анализ), Герой, Настройки.
 import * as G from "./game.js";
 import { S, save, touchLog, touchMeta, runSync, scheduleSync, onSync, sync, dirtyCount, exportAll } from "./store.js";
-import { exerciseSeries, weekly, hints } from "./analysis.js";
+import { exerciseSeries, weekly, hints, yearStats } from "./analysis.js";
 
 const $ = s => document.querySelector(s);
 const main = $("#main");
@@ -99,7 +99,7 @@ function render() {
   const tab = r.tab === "sortie" ? "battle" : r.tab;
   document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (r.tab === "journey") renderJourney();
-  else if (r.tab === "progress") renderProgress();
+  else if (r.tab === "progress") { if (r.arg === "year") renderYear(); else renderProgress(); }
   else if (r.tab === "hero") renderHero();
   else if (r.tab === "chronicle") renderChronicle();
   else if (r.tab === "settings") renderSettings();
@@ -625,8 +625,46 @@ function renderProgress() {
     <ul class="list">${s.points.slice(-8).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.weight || "свой вес")}</span><span>${p.sets} подх., лучш. ${p.best}, всего ${p.total}${p.planPct != null ? ` · ${Math.round(p.planPct * 100)}%` : ""}</span></li>`).join("")}</ul>`;
   } else h += `<p class="hint">Здесь появятся графики после первых записей.</p>`;
   h += `<h2 class="sec">ЛИЧНЫЕ РЕКОРДЫ</h2><ul class="list">${SUM.prList.slice(-12).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.name)}</span><span>${esc(p.text)}</span></li>`).join("") || "<li><span>Пока нет — первый крит впереди.</span></li>"}</ul>`;
+  h += `<a class="act yearbtn" href="#/progress/year">ИТОГИ ГОДА</a>`;
   main.innerHTML = h;
   $("#exSel")?.addEventListener("change", e => { chosenEx = e.target.value; renderProgress(); });
+}
+
+// ---------- итоги года: вся статистика за план, доступна всегда ----------
+function renderYear() {
+  const t = todayISO(), s = SUM, y = yearStats(S.logs, s, t);
+  const num = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const fight = (x, extra) => x ? `<li><span>${fmt(x.date)} · ${esc(x.name)}</span><span>${extra}</span></li>` : "";
+  const recLi = r => `<li><span>${esc(r.name)}<small> · ${r.n} трен.</small></span><span>${r.grew ? `${unitTxt(r.from, r.unit)} → <b class="gold">${unitTxt(r.to, r.unit)}</b>` : unitTxt(r.to, r.unit)}</span></li>`;
+  const unitTxt = (p, unit) => `${p.best} ${unit === "сек" ? "с" : unit === "мин" ? "мин" : "повт."}${p.kg > 0 ? " · " + esc(p.weight) : ""}`;
+  let h = `<p class="lead">Итоги года</p><p class="sub">${fmt(G.WEEKS[0].onFrom)}.${G.WEEKS[0].onFrom.slice(0, 4)} — сегодня. Считается из журнала, обновляется после каждой тренировки. <a href="#/progress">← к анализу</a></p>
+  <div class="stats"><div><b>${y.fights}</b><span>боёв</span></div><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.cardio}</b><span>патрулей</span></div>
+  <div><b>${num(y.reps)}</b><span>повторов</span></div><div><b>${num(y.sets)}</b><span>подходов</span></div><div><b>${y.tonnage >= 10000 ? (y.tonnage / 1000).toFixed(1).replace(".", ",") + " т" : num(y.tonnage) + " кг"}</b><span>поднято</span></div>
+  <div><b>${y.planPct == null ? "—" : Math.round(y.planPct * 100) + "%"}</b><span>плана</span></div><div><b>${s.streak.best}</b><span>лучшая серия</span></div><div><b>${s.prList.filter(p => !p.custom).length}</b><span>рекордов</span></div>
+  <div><b>${s.level}</b><span>уровень</span></div><div><b>${num(s.goldEarned)}</b><span>золота добыто</span></div><div><b>${s.eliteKills}</b><span>элиты</span></div></div>
+  <h2 class="sec">КАЛЕНДАРЬ</h2>${yearCalendar(y.cal, t)}
+  <div class="legend"><span style="--c:var(--gold)">монстр убит</span><span style="--c:#8e1a12">сбежал</span><span style="--c:#6b5b3a">патруль</span><span style="--c:#3a3630">пропуск</span></div>
+  <h2 class="sec">РЕКОРДЫ: БЫЛО → СТАЛО</h2><ul class="list">${y.records.slice(0, 12).map(recLi).join("") || "<li><span>Появятся после первых тренировок.</span></li>"}</ul>
+  ${y.records.length > 12 ? `<details class="more"><summary>ещё упражнения: ${y.records.length - 12}</summary><ul class="list">${y.records.slice(12).map(recLi).join("")}</ul></details>` : ""}
+  <h2 class="sec">ЛУЧШИЕ БОИ</h2><ul class="list">${fight(y.bestXp, `+${y.bestXp?.xp} опыта`)}${fight(y.bestOver, `перебор ${Math.round((y.bestOver?.battle.over || 0) / (y.bestOver?.battle.hp || 1) * 100)}%`)}${fight(y.bestCrit, `${y.bestCrit?.prs} крит.`)}` + (y.bestXp ? "" : "<li><span>Пока не было боёв.</span></li>") + `</ul>
+  <h2 class="sec">БОЛЬШИЕ ПОБЕДЫ</h2><ul class="list">${y.big.map(b => `<li><span>${fmt(b.date)} · ${esc(b.name)}</span><span>+${b.xp} опыта</span></li>`).join("") || "<li><span>Первый вожак — Грызь, 13.11.</span></li>"}</ul>
+  <h2 class="sec">УБИТО ПО СЕМЬЯМ</h2><ul class="list">${y.families.map(f => `<li><span>${esc(f.name)}</span><span>${f.n}</span></li>`).join("") || "<li><span>Пока никого.</span></li>"}</ul>`;
+  main.innerHTML = h;
+}
+// Календарь: столбец — неделя плана, строка — день недели (пн сверху).
+function yearCalendar(cal, t) {
+  const start = G.WEEKS[0].onFrom, n = G.WEEKS.length, C = 8, W = n * C, H = 7 * C + 12;
+  const color = { kill: "#c9a24a", fled: "#8e1a12", cardio: "#6b5b3a", skip: "#3a3630", plan: "#1c1a17" };
+  let cells = "";
+  for (let k = 0; k < n * 7; k++) {
+    const iso = G.addDays(start, k), st = cal[iso];
+    if (!st) continue;
+    const col = Math.floor(k / 7), row = k % 7;
+    cells += `<rect x="${col * C}" y="${row * C}" width="${C - 1}" height="${C - 1}" fill="${color[st]}" ${st === "plan" && iso < t ? 'stroke="#3a1410"' : ""}><title>${fmt(iso)}</title></rect>`;
+  }
+  const months = [];
+  for (let col = 0; col < n; col++) { const iso = G.addDays(start, col * 7); if (col === 0 || iso.slice(8, 10) <= "07") months.push(`<text x="${col * C}" y="${H - 1}">${["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][+iso.slice(5, 7) - 1]}</text>`); }
+  return `<svg class="chart cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="Календарь тренировок">${cells}${months.join("")}</svg>`;
 }
 
 function lineChart(pts, label, color = "#efe8d6") {

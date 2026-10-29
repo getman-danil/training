@@ -323,3 +323,8 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .stage.event::before{background:radial-gradient(55% 45% at 50% 68%,rgba(110,160,220,.22),transparent 72%),radial-gradient(70% 30% at 50% 100%,rgba(120,110,95,.18),transparent 70%)}
 .stage.moon .mname small,.stage.event .mname small{color:#d4534a}
 .evt{color:#c98a7a;font-style:italic}
+/* итоги года */
+.yearbtn{display:grid;place-items:center;text-decoration:none;color:var(--bone);margin:22px 0 4px}
+.chart.cal text{font-size:7px;fill:var(--mute)}
+.stats div b{word-break:break-word}
+details.more summary{font-family:var(--caps);letter-spacing:.1em;color:var(--dust);padding:10px 0;cursor:pointer}
