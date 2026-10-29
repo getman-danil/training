@@ -51,7 +51,7 @@ const ELITE = {
   "dragon-wyvern": ["Матёрая виверна", "Ядовитое жало"],
 };
 // Свои картинки элиты (assets/monsters/elite-<id>.webp); у кого ещё нет — обычная картинка на золотом фоне.
-const ELITE_ART = new Set(["goblin-raider", "goblin-archer", "goblin-shaman"]);
+const ELITE_ART = new Set(["goblin-raider", "goblin-archer", "goblin-shaman", "undead-skeleton", "undead-ghoul", "undead-wraith", "dragon-drake"]);
 export function eliteOf(m) {
   if (!m || !ELITE[m.id]) return m;
   return { ...m, elite: true, name: ELITE[m.id][0], trophy: ELITE[m.id][1], img: ELITE_ART.has(m.id) ? `assets/monsters/elite-${m.id}.webp` : m.img };
