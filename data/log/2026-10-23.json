@@ -16,6 +16,9 @@
       "weight": "16 кг",
       "reps": [
         15,
+        15,
+        15,
+        15,
         15
       ],
       "note": ""
@@ -70,9 +73,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 80,
-    "overkill": 40,
+    "dealt": 200,
+    "overkill": 100,
     "killed": false
   },
-  "updatedAt": 1793289512251
+  "updatedAt": 1793289808635
 }
