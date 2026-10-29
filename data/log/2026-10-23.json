@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-23",
+  "week": 2,
+  "block": "Блок 1. Возвращение",
+  "title": "В — махи + объём",
+  "performedOn": "2026-10-29",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "ex",
+      "name": "Махи гирей двумя руками",
+      "plan": "6×10",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [
+        15,
+        15
+      ],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга в кольцах (кольца на уровне пояса, ноги согнуты)",
+      "plan": "3×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания от пола",
+      "plan": "3×14",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Выпады назад, гиря у груди",
+      "plan": "3×10 на ногу",
+      "planWeight": "8 кг",
+      "weight": "8 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Сгибания рук в кольцах + разгибания на трицепс в кольцах (суперсет)",
+      "plan": "3×12 + 3×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Скакалка — финишер",
+      "plan": "4×1 мин",
+      "planWeight": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Гоблин-лучник",
+    "hp": 1008,
+    "dealt": 80,
+    "overkill": 40,
+    "killed": false
+  },
+  "updatedAt": 1793289512251
+}
