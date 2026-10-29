@@ -1,6 +1,6 @@
 {
   "freezes": [],
-  "updatedAt": 1793293282220,
+  "updatedAt": 1793296583151,
   "shifts": [
     {
       "at": "2026-10-19",
@@ -46,8 +46,7 @@
           "lck": 2
         },
         "nodes": [
-          "lck1",
-          "seeker"
+          "lck1"
         ]
       }
     ]
