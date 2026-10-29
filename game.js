@@ -7,6 +7,7 @@ export const MAX_SETS_HP = 5;       // упражнение с кучей под
 export const OVERKILL_CAP = 0.2;    // перевыполнение даёт бонусный опыт не больше 20% здоровья
 export const XP_PER_HP = 0.25;      // опыт за урон: 4 единицы здоровья = 1 опыт
 export const XP_KILL = 100, XP_PR = 25, XP_CARDIO = 30, XP_TAVERN_BUFF = 50, XP_REVENGE = 50;
+export const NIGHT_HOUR = 21;      // «Ночная смена» и «Полуночник»: бой, законченный с этого часа (решено 29.10: спать в 22:00)
 export const REVENGE_WINDOW = 14;   // сбежавший монстр возвращается, если следующая тренировка не позже чем через 14 дней
 export const FREEZES = 3;           // ручных заморозок серии на весь план
 
@@ -510,9 +511,10 @@ export const UNIQUE_FX = {
 };
 
 // ---------- золото, торговец, кузница ----------
-// Золото дают только убийства, то есть только выполненный план. Перебор, рекорды и патрули золота не дают.
+// Золото дают бои: за убийство целиком, за сбежавшего монстра — FLED_GOLD от него, умноженное на долю урона.
+// Перебор, рекорды и патрули золота не дают.
 // meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
-export const GOLD_KILL = 10, GOLD_BOSS = 60;
+export const GOLD_KILL = 10, GOLD_BOSS = 60, FLED_GOLD = 0.5;
 export const PRICE_COMMON = 50, FORGE_FEE = 30, MYTHIC_COST = 800;
 export const isFair = iso => !!iso && FAIR_WEEKS.has(weekOf(iso).n);
 export const priceOf = (base, b, iso) => Math.round(base * (hasPerk(b, "merchant") ? 0.7 : 1) * (isFair(iso) ? 1 - FAIR_DISCOUNT : 1));
@@ -688,10 +690,10 @@ export function summarize(logs, meta, today) {
     });
     let find = 0, dg = 0;
     const when = whenOf(d, L);
+    // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
+    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
     if (b.killed) {
-      // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
-      dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
+      dg = Math.floor(gold + goldFull) - Math.floor(gold); gold += goldFull;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
       if (m?.elite) kx *= ELITE_KILL;
       if (m?.event) kx *= EVENT_KILL;
@@ -703,7 +705,11 @@ export function summarize(logs, meta, today) {
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
       if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
     }
-    else if (L.finished && b.dealt > 0) fled++;
+    else {
+      if (L.finished && b.dealt > 0) fled++;
+      // Сбежавший монстр роняет часть золота по нанесённому урону (решено 29.10): убийство по-прежнему только за 100% плана.
+      if (fledOn(d, L, today)) { const g = goldFull * FLED_GOLD * b.pct; dg = Math.floor(gold + g) - Math.floor(gold); gold += g; }
+    }
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
     const fc = findChances(rawFind(bd, on("luck", when)));
     if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
@@ -712,7 +718,7 @@ export function summarize(logs, meta, today) {
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1) * (hasPerk(bd, "u-tavern") ? 2 : 1); }
     let mul = hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1;
     if (b.dealt > 0 && !weekFirst.has(d.week)) { weekFirst.add(d.week); if (hasPerk(bd, "u-week")) mul += 0.06; }
-    const late = L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= 22;
+    const late = L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= NIGHT_HOUR;
     if (late && hasPerk(bd, "h-night")) mul += 0.2;
     if (hasPerk(bd, "h-year")) mul += 0.02;
     if (m && studiedAt(m.id, when)) mul += STUDY;
@@ -797,7 +803,7 @@ export function achievements(s) {
     A("streak8", "Железная воля", "Серия 8 недель", s.streakBest >= 8),
     A("streak16", "Несгибаемый", "Серия 16 недель", s.streakBest >= 16),
     A("cardio10", "Гонец", "Пройти 10 патрулей", s.cardio >= 10),
-    A("night", "Ночная смена", "Закончить бой после 22:00", s.nightOwl >= 1),
+    A("night", "Ночная смена", `Закончить бой после ${NIGHT_HOUR}:00`, s.nightOwl >= 1),
     A("d1", "Логово зачищено", "Убить 80% монстров блока 1", dungeonCleared(1, s.logs)),
     A("d2", "Склеп запечатан", "Пережить сессию: 80% боёв блока 2", dungeonCleared(2, s.logs)),
     A("d3", "Лагерь сожжён", "80% монстров блока 3", dungeonCleared(3, s.logs)),
@@ -879,7 +885,7 @@ export const HONOR = {
   crit10: { name: "Мастер критов", fx: "h-crit", desc: "+4% опыта за криты" },
   revenge5: { name: "Кровник", fx: "h-revenge", desc: "реванш +40 опыта" },
   cardio10: { name: "Гонец", fx: "h-patrol", desc: "+30% опыта за патрули" },
-  night: { name: "Полуночник", fx: "h-night", desc: "бой, законченный после 22:00, +20% опыта" },
+  night: { name: "Полуночник", fx: "h-night", desc: `бой, законченный после ${NIGHT_HOUR}:00, +20% опыта` },
   boss1: { name: "Цареубийца", fx: "h-boss", desc: "+25% опыта за боссов" },
   find5: { name: "Мародёр", fx: "h-find", desc: "+3% к шансу находки" },
   bossAll: { name: "Победитель года", fx: "h-year", desc: "+2% всего опыта за бои" },

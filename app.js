@@ -33,11 +33,24 @@ function commit(day, L) {
   L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed, ...(b.replaced ? { replaced: true } : {}) } : { patrol: true };
   // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
   if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.on < todayISO() ? day.on : todayISO();
+  // Все подходы стёрты — день снова не сделан, дата «сделал» не должна остаться от случайного тапа.
+  if (isEmptyDay(L, b)) L.performedOn = null;
   const before = SUM?.level, rw = SUM?.unclaimed;
   touchLog(L);
   recompute(); renderTop();
   if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
   else if (rw != null && SUM.unclaimed > rw) toast("Новая награда — забери её в Летописи");
+}
+
+function isEmptyDay(L, b) { return !L.sortie && !L.finished && !L.skipped && !L.replaced && !b.setsDone && !L.items.some(x => x.done); }
+// Старые записи, где дата осталась после случайного тапа, чистим один раз при запуске и после синхронизации.
+function clearEmptyDates() {
+  let n = 0;
+  for (const L of Object.values(S.logs)) {
+    const day = L && G.DAY_BY_DATE[L.date];
+    if (day && L.performedOn && isEmptyDay(L, G.battle(day, L))) { L.performedOn = null; touchLog(L); n++; }
+  }
+  return n;
 }
 
 // Вылазка — тренировка вне плана, своя запись с ключом "x-<дата>".
@@ -180,7 +193,7 @@ function updateStage(animate, info) {
   const found = (loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "") + (pd?.trophy ? `<br>трофей: <span class="legendary">${esc(pd.trophy)}</span>` : "");
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : m.elite ? "ЭЛИТА ПОВЕРЖЕНА" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -249,7 +262,7 @@ function exHTML(day, i, b) {
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
   const sub = li?.sub != null || subOpen.has(i);
   const head = sub
-    ? `<div class="h"><input class="cname" data-sub="${i}" list="exNames" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
+    ? `<div class="h"><input class="cname" data-sub="${i}" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
     <div class="spec">вместо: ${esc(it.name)} · подход засчитан, если повторов не меньше плановых · рекорд без крита</div>`
     : `<div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
     <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit} <button class="sublink" data-subbtn="${i}">заменить</button></div>`;
@@ -278,7 +291,7 @@ function cxHTML(L, j) {
   const x = L.extra[j], prs = SUM.prs[L.date] || {}, reps = x.reps || [];
   const cells = reps.map((r, k) => { const has = r != null && +r > 0; return `<button class="${["set", has ? "d" : "", prs[`x${j}:${k}`] ? "pr" : ""].join(" ")}" data-cset="${j}:${k}"><small>${k + 1}</small>${has ? r : '<span class="g">·</span>'}</button>`; }).join("");
   return `<div class="ex cx" data-cx="${j}">
-    <div class="h"><input class="cname" data-cname="${j}" list="exNames" value="${esc(x.name)}" placeholder="упражнение" aria-label="Упражнение" autocomplete="off"><button class="ghostbtn cdel" data-cdel="${j}" aria-label="Убрать упражнение">✕</button></div>
+    <div class="h"><input class="cname" data-cname="${j}" value="${esc(x.name)}" placeholder="упражнение" aria-label="Упражнение" autocomplete="off"><button class="ghostbtn cdel" data-cdel="${j}" aria-label="Убрать упражнение">✕</button></div>
     <div class="sets">${cells}<button class="set add" data-cadd="${j}" aria-label="Добавить подход">+</button></div>
     <div class="fields"><input data-cw="${j}" value="${esc(x.weight)}" placeholder="вес" aria-label="Вес"><input data-cn="${j}" value="${esc(x.note)}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
   </div>`;
@@ -498,6 +511,52 @@ main.addEventListener("change", e => {
   if (t.id === "dayNote" && cur) { const L = curLog(true); L.dayNote = t.value; commitCur(L); }
 });
 
+// ---------- список упражнений для своих и заменённых ----------
+// Тап по названию открывает список: свои, которые уже записывал, и упражнения из плана по группам. Набор текста фильтрует список,
+// а любое своё название можно просто вписать. Имена из плана — тогда рекорды и графики общие.
+const PLAN_EX = [...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name) && !i.name.includes(":")).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort((a, b) => a.localeCompare(b, "ru"));
+// Группы для списка: проверяются по порядку, «Румынская тяга» попадает в ноги раньше, чем в тягу.
+const EX_GROUPS = [["Кардио", /скакалк/i], ["Кор", /планк|подъ[её]м|носки/i], ["Руки", /сгибани/i], ["Ноги", /присед|выпад|румынск|мост|мах|сплит/i], ["Тяга", /подтяг|тяга/i], ["Жим", /отжим|жим|брус/i]];
+const EX_GROUP_ORDER = ["Тяга", "Жим", "Ноги", "Кор", "Руки", "Кардио", "Другое"];
+const exGroup = n => (EX_GROUPS.find(([, re]) => re.test(n)) || ["Другое"])[0];
+function ownEx() {
+  const plan = new Set(PLAN_EX.map(G.normName)), own = new Map();
+  for (const L of Object.values(S.logs)) {
+    if (!L || L.deleted) continue;
+    for (const x of [...(L.extra || []).map(x => x.name), ...(L.items || []).map(x => x.sub)]) {
+      const v = String(x || "").trim(), k = G.normName(v);
+      if (v && !plan.has(k) && !own.has(k)) own.set(k, v);
+    }
+  }
+  return [...own.values()].sort((a, b) => a.localeCompare(b, "ru"));
+}
+let exListFor = null;
+function showExList(inp) {
+  hideExList();
+  exListFor = inp;
+  const q = G.normName(inp.value), hit = n => !q || G.normName(n).includes(q);
+  const own = ownEx().filter(hit), plan = PLAN_EX.filter(hit);
+  const row = n => `<button type="button" class="exopt" data-exopt="${esc(n)}">${esc(n)}</button>`;
+  const typed = inp.value.trim(), exact = [...own, ...plan].some(n => G.normName(n) === q);
+  inp.closest(".h").insertAdjacentHTML("afterend", `<div class="exlist" id="exList">
+    ${typed && !exact ? `<button type="button" class="exopt mine" data-exopt="${esc(typed)}">+ своё: «${esc(typed)}»</button>` : ""}
+    ${own.length ? `<div class="exgrp">свои</div>${own.map(row).join("")}` : ""}
+    ${EX_GROUP_ORDER.map(g => { const ns = plan.filter(n => exGroup(n) === g); return ns.length ? `<div class="exgrp">${g}</div>${ns.map(row).join("")}` : ""; }).join("")}
+    ${!typed ? `<div class="exgrp">или впиши своё название в поле</div>` : ""}
+  </div>`);
+}
+function hideExList() { $("#exList")?.remove(); exListFor = null; }
+main.addEventListener("focusin", e => { if (e.target.matches("input.cname")) showExList(e.target); });
+main.addEventListener("input", e => { if (e.target === exListFor) showExList(e.target); });
+main.addEventListener("focusout", e => { if (e.target === exListFor) setTimeout(() => { if (document.activeElement !== exListFor) hideExList(); }, 150); });
+// pointerdown, а не click: иначе поле теряет фокус раньше, чем срабатывает выбор.
+main.addEventListener("pointerdown", e => {
+  const o = e.target.closest("[data-exopt]"); if (!o || !exListFor) return;
+  e.preventDefault();
+  const inp = exListFor; inp.value = o.dataset.exopt; hideExList();
+  inp.dispatchEvent(new Event("change", { bubbles: true })); inp.blur();
+});
+
 // ---------- лист ввода повторов ----------
 const sheet = $("#sheet"), sv = $("#sheetVal");
 let sheetAt = null;
@@ -702,7 +761,7 @@ function renderHero() {
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
-  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: у торговца на него покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: за сбежавшего — половина от этого, умноженная на долю урона; у торговца на золото покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
@@ -996,9 +1055,7 @@ function renderSettings() {
 function renderSettingsMsg() { const m = $("#cfgMsg"); if (m) m.textContent = sync.msg || ""; }
 
 // ---------- старт ----------
-// Подсказки названий для своих упражнений: те же имена, что в плане, — тогда рекорды и графики общие.
-document.body.insertAdjacentHTML("beforeend", `<datalist id="exNames">${[...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name)).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort().map(n => `<option value="${esc(n)}">`).join("")}</datalist>`);
-recompute(); renderTop(); renderSync(); render();
-if (S.cfg.token) runSync().then(() => { recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
+clearEmptyDates(); recompute(); renderTop(); renderSync(); render();
+if (S.cfg.token) runSync().then(() => { clearEmptyDates(); recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
 else scheduleSync();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
