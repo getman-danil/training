@@ -1,0 +1,23 @@
+{
+  "date": "x-2026-10-29",
+  "sortie": true,
+  "title": "Вылазка",
+  "performedOn": "2026-10-29",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [],
+  "extra": [
+    {
+      "name": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "game": {
+    "sortie": true,
+    "sets": 0
+  },
+  "updatedAt": 1793296355722
+}
