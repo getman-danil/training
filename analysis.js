@@ -11,7 +11,9 @@ export function exerciseSeries(logs) {
     if (!L || L.deleted || (!day && !isSortieKey(key0))) continue;
     const date = day ? key0 : sortieDate(L);
     const rows = [
-      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && [it, L.items?.[i], parsePlan(it)]) : []),
+      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && (String(L.items?.[i]?.sub || "").trim()
+        ? [{ name: L.items[i].sub, weight: "" }, L.items[i], { sets: 0, target: null, unit: parsePlan(it).unit }]
+        : [it, L.items?.[i], parsePlan(it)])) : []),
       ...(L.extra || []).map(x => [{ name: x.name, weight: "" }, x, { sets: 0, target: null, unit: "повт" }]),
     ].filter(r => r && r[1] && String(r[0].name || "").trim());
     rows.forEach(([it, li, pp]) => {

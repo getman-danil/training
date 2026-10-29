@@ -121,6 +121,7 @@ function dayState(d) {
 }
 
 function renderBattle(date) {
+  if (cur?.day?.date !== date) subOpen.clear();
   const day = G.DAY_BY_DATE[date], L = getLog(day, false) || null;
   cur = { day };
   const w = G.WEEKS.find(x => x.n === day.week), wi = G.WEEKS.indexOf(w);
@@ -244,9 +245,14 @@ function exHTML(day, i, b) {
   cells += `<button class="set add" data-add="${i}" aria-label="Добавить подход">+</button>`;
   const done = exb && exb.dealt >= exb.hp - 0.5;
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
-  return `<div class="ex ${done ? "done" : ""}" data-ex="${i}">
-    <div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
-    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit}</div>${it.hint ? `<div class="spec">${esc(it.hint)}</div>` : ""}
+  const sub = li?.sub != null || subOpen.has(i);
+  const head = sub
+    ? `<div class="h"><input class="cname" data-sub="${i}" list="exNames" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
+    <div class="spec">вместо: ${esc(it.name)} · замена даёт не больше ${Math.round(G.SUB_CAP * 100)}% урона упражнения, рекорд без крита</div>`
+    : `<div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
+    <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit} <button class="sublink" data-subbtn="${i}">заменить</button></div>`;
+  return `<div class="ex ${done ? "done" : ""} ${sub ? "cx" : ""}" data-ex="${i}">
+    ${head}${it.hint && !sub ? `<div class="spec">${esc(it.hint)}</div>` : ""}
     <div class="sets">${cells}</div>
     <div class="fields"><input data-w="${i}" value="${esc(li ? li.weight : it.weight || "")}" placeholder="вес" aria-label="Вес"><input data-n="${i}" value="${esc(li?.note || "")}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
     ${exb && Math.abs(exb.lf - 1) > 0.005 ? `<div class="spec lf">вес не как в плане · урон за повтор ×${exb.lf.toFixed(2).replace(".", ",")}</div>` : ""}
@@ -289,7 +295,7 @@ function offPlanHTML(day, L) {
     <button class="act" data-off="add">ДОПОЛНИТЬ ТРЕНИРОВКУ</button>
     ${cardio ? "" : `<button class="act" data-off="replace">ЗАМЕНИТЬ ТРЕНИРОВКУ</button>`}
     <button class="act" data-off="sortie">ОТДЕЛЬНЫМ ДНЁМ</button>
-    <div class="hint" style="text-align:left">${cardio ? "" : `<b>Дополнить</b> — свои упражнения к плановым: идут в перебор, бонус за перебор общий, не больше +${Math.round(G.OVERKILL_CAP * 100)}%. <b>Заменить</b> — сделал другое вместо плана: подходы бьют монстра до ${Math.round(G.REPLACE_CAP * 100)}%, он сбегает и вернётся на реванш, серия не рвётся. `}<b>Отдельным днём</b> — вылазка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день. Рекорды в своих упражнениях — критические удары.</div>
+    <div class="hint" style="text-align:left">${cardio ? "" : `<b>Дополнить</b> — свои упражнения к плановым: идут в перебор, бонус за перебор общий, не больше +${Math.round(G.OVERKILL_CAP * 100)}%. <b>Заменить</b> — сделал другое вместо плана: подходы бьют монстра до ${Math.round(G.REPLACE_CAP * 100)}%, он сбегает и вернётся на реванш, серия не рвётся. `}<b>Отдельным днём</b> — вылазка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день. Любое упражнение дня можно <b>заменить</b> отдельно — кнопка у упражнения. Рекорды в своих и заменённых упражнениях записываются, но крита не дают.</div>
   </details>`;
 }
 function sortieSVG() {
@@ -302,7 +308,7 @@ function renderSortie(key) {
   cur = { sortie: key };
   const on = G.sortieDate(L);
   main.innerHTML = `<div class="loc">ВЫЛАЗКА ВНЕ ПЛАНА · НЕДЕЛЯ ${G.weekOf(on).n}</div>
-  <div class="cardio">${sortieSVG()}<h2>ВЫЛАЗКА</h2><p>Тренировка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день, рекорд — крит. Золота, находок и серии нет: главное — сам план.</p></div>
+  <div class="cardio">${sortieSVG()}<h2>ВЫЛАЗКА</h2><p>Тренировка вне плана: +${G.SORTIE_XP_SET} опыта за подход, не больше ${G.SORTIE_XP_MAX} за день. Рекорды записываются, но без крита. Золота, находок и серии нет: главное — сам план.</p></div>
   <div class="dayhead"><input id="sTitle" class="ctitle" value="${esc(L.title || "")}" placeholder="Вылазка" aria-label="Название вылазки"><p>${G.dowOf(on)}, ${fmt(on)}</p></div>
   ${customHTML(L, true)}
   <div class="finish"><textarea id="dayNote" placeholder="Заметка: что делал и почему не по плану">${esc(L.dayNote || "")}</textarea>
@@ -325,11 +331,14 @@ function setXRep(j, k, val) {
   else { while (x.reps.length < k) x.reps.push(null); x.reps[k] = val; }
   L.skipped = false;
   commitCur(L);
-  const crit = !!(SUM.prs[L.date] || {})[`x${j}:${k}`] && Object.keys(SUM.prs[L.date] || {}).length > prBefore;
+  const rec = !!(SUM.prs[L.date] || {})[`x${j}:${k}`] && Object.keys(SUM.prs[L.date] || {}).length > prBefore;
   refreshCx(j); refreshFinish();
-  if (before) { const after = G.battle(cur.day, L); updateStage(true, { dmg: (after.dealt + after.over) - (before.dealt + before.over), crit }); }
-  if (crit) toast("Критический удар: личный рекорд!");
+  if (before) { const after = G.battle(cur.day, L); updateStage(true, { dmg: (after.dealt + after.over) - (before.dealt + before.over) }); }
+  if (rec) toast("Личный рекорд записан");
 }
+// Замена одного планового упражнения: li.sub — чем заменил. Пока название не введено, поле держится открытым в subOpen.
+const subOpen = new Set();
+const lfOf = (it, li) => (String(li?.sub || "").trim() ? 1 : G.loadFactor(it, li));
 function focusLastEx() { const ins = main.querySelectorAll("[data-cname]"); const el = ins[ins.length - 1]; if (el && !el.value) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }
 
 // Пока нет картинки патруля: факел дозорного.
@@ -364,12 +373,14 @@ function setRep(i, k, val) {
   else { while (li.reps.length < k) li.reps.push(null); li.reps[k] = val; }
   commit(day, L);
   const after = G.battle(day, L);
-  const crit = !!(SUM.prs[day.date] || {})[i + ":" + k] && Object.keys(SUM.prs[day.date] || {}).length > prBefore;
+  const pr = (SUM.prs[day.date] || {})[i + ":" + k], fresh = !!pr && Object.keys(SUM.prs[day.date] || {}).length > prBefore;
+  const crit = fresh && !pr.custom;
   const dmg = (after.dealt + after.over) - (before.dealt + before.over);
   refreshEx(i); refreshFinish();
   updateStage(true, { dmg, crit });
   if (!before.killed && after.killed) { const m = G.monsterFor(day); toast(m.tavern ? "Спарринг выигран" : G.REVENGE[day.date] ? `Реванш взят: ${m.name} повержен! +${G.XP_REVENGE} опыта` : `${m.name} повержен!`); if (navigator.vibrate) navigator.vibrate([60, 60, 120]); }
   if (crit) toast("Критический удар: личный рекорд!");
+  else if (fresh) toast("Личный рекорд записан");
 }
 
 main.addEventListener("click", e => {
@@ -380,7 +391,7 @@ main.addEventListener("click", e => {
     const [i, k] = s.dataset.set.split(":").map(Number);
     const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
     const r = S.logs[day.date]?.items?.[i]?.reps?.[k];
-    if ((r == null || r === "") && pp.target) setRep(i, k, Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9));
+    if ((r == null || r === "") && pp.target) setRep(i, k, Math.ceil(pp.target / lfOf(it, S.logs[day.date]?.items?.[i]) - 1e-9));
     else openSheet(i, k, s);
     return;
   }
@@ -393,6 +404,15 @@ main.addEventListener("click", e => {
     const tmp = document.createElement("div"); tmp.innerHTML = noteHTML(day, i); n.replaceWith(tmp.firstElementChild);
     refreshFinish();
     return;
+  }
+  const sb = e.target.closest("[data-subbtn]");
+  if (sb) { const i = +sb.dataset.subbtn; subOpen.add(i); refreshEx(i); main.querySelector(`[data-sub="${i}"]`)?.focus(); return; }
+  const us = e.target.closest("[data-unsub]");
+  if (us) {
+    const i = +us.dataset.unsub, day = cur.day, L = S.logs[day.date], li = L?.items?.[i];
+    subOpen.delete(i);
+    if (li && li.sub != null) { delete li.sub; li.weight = day.items[i].weight || ""; commit(day, L); }
+    refreshEx(i); updateStage(false); refreshFinish(); return;
   }
   const cs = e.target.closest("[data-cset]");
   if (cs) { const [j, k] = cs.dataset.cset.split(":").map(Number); openSheet(j, k, cs, true); return; }
@@ -466,6 +486,12 @@ main.addEventListener("change", e => {
     commit(day, L);
     if (t.dataset.w != null) setTimeout(() => { if (cur?.day === day) { refreshEx(i); updateStage(false); refreshFinish(); } });
   }
+  if (t.matches("[data-sub]") && cur?.day) {
+    const day = cur.day, L = getLog(day, true), i = +t.dataset.sub, li = L.items[i], v = t.value.trim();
+    if (v) { if (li.sub == null && li.weight === (day.items[i].weight || "")) li.weight = ""; li.sub = v; } else delete li.sub;
+    commit(day, L); subOpen.delete(i);
+    setTimeout(() => { refreshEx(i); updateStage(false); refreshFinish(); });
+  }
   if (t.matches("[data-cname],[data-cw],[data-cn]") && cur) {
     const L = curLog(true), j = +(t.dataset.cname ?? t.dataset.cw ?? t.dataset.cn), x = L.extra[j];
     if (t.dataset.cname != null) x.name = t.value.trim(); else if (t.dataset.cw != null) x.weight = t.value.trim(); else x.note = t.value.trim();
@@ -491,7 +517,7 @@ function openSheet(i, k, el, x) {
   }
   const day = cur.day, it = day.items[i], pp = G.parsePlan(it);
   const reps = S.logs[day.date]?.items?.[i]?.reps || [];
-  const need = pp.target && Math.ceil(pp.target / G.loadFactor(it, S.logs[day.date]?.items?.[i]) - 1e-9);
+  const need = pp.target && Math.ceil(pp.target / lfOf(it, S.logs[day.date]?.items?.[i]) - 1e-9);
   const val = reps[k] ?? reps[k - 1] ?? need ?? "";
   sheetAt = { i, k };
   $("#sheetTitle").textContent = `${it.name} · подход ${k + 1}${pp.target ? " · план " + pp.target : ""} ${pp.unit !== "повт" ? pp.unit : ""}`;

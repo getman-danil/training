@@ -199,7 +199,9 @@ export function battle(day, log) {
     const pp = parsePlan(it);
     const reps = replaced ? [] : (log?.items?.[i]?.reps || []);
     const exHp = DMG * Math.min(pp.sets, MAX_SETS_HP) * mult, per = exHp / pp.sets;
-    const lf = loadFactor(it, log?.items?.[i]);
+    // Заменённое упражнение (li.sub): повторы сравниваются с плановыми, вес не пересчитывается, урон — до SUB_CAP.
+    const sub = !!String(log?.items?.[i]?.sub || "").trim();
+    const lf = sub ? 1 : loadFactor(it, log?.items?.[i]);
     let d = 0, o = 0;
     reps.forEach((r, k) => {
       if (r == null || r === "") return;
@@ -209,8 +211,9 @@ export function battle(day, log) {
       if (k < pp.sets) { d += per * Math.min(frac, 1); o += per * Math.max(frac - 1, 0); }
       else o += per * frac;
     });
+    if (sub) d = Math.min(d, exHp * SUB_CAP);
     hp += exHp; dealt += d; over += o;
-    exs.push({ i, pp, per, lf, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
+    exs.push({ i, pp, per, lf, sub, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
   });
   // Свои упражнения: каждый подход стоит одного обычного планового. При замене это урон, но не больше REPLACE_CAP
   // здоровья, — убить можно только планом. При дополнении это перебор, у которого общий потолок +20%.
@@ -229,9 +232,11 @@ export function battle(day, log) {
 // • заменить — log.replaced = true: плановые подходы не считаются, свои бьют монстра дня до 70% здоровья,
 //   он сбегает и приходит на реванш; неделя для серии засчитывается, потому что тренировка была;
 // • вылазка — отдельная запись вне плана с ключом "x-<дата>[-n]": немного опыта за подходы (не больше патруля в день),
-//   без золота, находок и серии. Рекорды из своих упражнений считаются везде.
+//   без золота, находок и серии. Рекорды из своих упражнений записываются, но крита (опыта) не дают.
 // log.extra = [{ name, weight, reps: [...], note }]
 export const REPLACE_CAP = 0.7;
+// Замена одного упражнения: оно даёт не больше SUB_CAP своего урона, так что с заменой монстра не убить — он сбегает на реванш.
+export const SUB_CAP = 0.7;
 export const SORTIE_XP_SET = 2, SORTIE_XP_MAX = XP_CARDIO;
 export const isSortieKey = k => typeof k === "string" && k.startsWith("x-");
 export const sortieDate = L => L.performedOn || L.date.slice(2, 12);
@@ -283,10 +288,11 @@ export function computePRs(logs) {
     const updates = [];
     // Плановые упражнения (кроме заменённого дня) и свои; ключ подхода — "i:k" для плана, "xj:k" для своих.
     const rows = [
-      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && [String(i), it, L.items?.[i]]) : []),
-      ...(L.extra || []).map((x, j) => [`x${j}`, { name: x.name, weight: "" }, x]),
+      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && (String(L.items?.[i]?.sub || "").trim() ? [String(i), { name: L.items[i].sub, weight: "" }, L.items[i], true] : [String(i), it, L.items?.[i]])) : []),
+      ...(L.extra || []).map((x, j) => [`x${j}`, { name: x.name, weight: "" }, x, true]),
     ].filter(r => r && r[2] && String(r[1].name || "").trim());
-    rows.forEach(([i, it, li]) => {
+    // custom: своё или заменённое упражнение — рекорд записывается, но крита не даёт.
+    rows.forEach(([i, it, li, custom]) => {
       const name = normName(it.name), w = (li.weight ?? it.weight ?? "").trim().toLowerCase();
       const key = name + "|" + w, wk = kg(w);
       const preReps = bestReps[key], preKg = bestKg[name];
@@ -297,13 +303,12 @@ export function computePRs(logs) {
       (li.reps || []).forEach((r, k) => {
         r = +r; if (!(r > 0)) return;
         if (newKg || (preReps != null && r > preReps)) {
-          (prs[date] ||= {})[i + ":" + k] = newKg ? { kind: "kg" } : { kind: "reps" };
+          (prs[date] ||= {})[i + ":" + k] = { kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}) };
           dayBest = Math.max(dayBest, r);
         }
       });
-      if (dayBest) list.push(newKg
-        ? { date: ord(date), key: date, name: it.name, kind: "kg", text: `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` }
-        : { date: ord(date), key: date, name: it.name, kind: "reps", text: `${dayBest} повт. (было ${preReps})` });
+      if (dayBest) list.push({ date: ord(date), key: date, name: it.name, kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}),
+        text: newKg ? `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` : `${dayBest} повт. (было ${preReps})` });
       updates.push([key, name, Math.max(...reps), wk]);
     });
     for (const [key, name, r, wk] of updates) {
@@ -576,7 +581,7 @@ export function summarize(logs, meta, today) {
     const statMul = 1 + heavyShare * (0.095 * st.str + (hasPerk(bd, "breaker") ? 0.3 : 0)) + (1 - heavyShare) * 0.07 * st.end;
     let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
     const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) * (hasPerk(bd, "u-boss") ? 1.1 : 1) * (hasPerk(bd, "h-boss") ? 1.25 : 1) : 1;
-    const dayPRs = Object.entries(prs[d.date] || {});
+    const dayPRs = Object.entries(prs[d.date] || {}).filter(([, pr]) => !pr.custom);
     const nPR = dayPRs.length;
     dayPRs.forEach(([, pr], k) => {
       let x = XP_PR * (1 + 0.05 * st.agi);
@@ -621,16 +626,15 @@ export function summarize(logs, meta, today) {
     if (late) nightOwl++;
     xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
-  // Вылазки вне плана: опыт за подходы, не больше патруля за день, плюс криты. Без золота, находок и серии.
+  // Вылазки вне плана: опыт за подходы, не больше патруля за день. Рекорды записываются без крита. Без золота, находок и серии.
   const sortieDay = {};
   let sortieCount = 0;
   for (const L of sorties(logs)) {
     const sets = customSets(L); if (!sets) continue;
-    const on = sortieDate(L), bd = buildAt(meta, on), had = sortieDay[on] || 0;
+    const on = sortieDate(L), had = sortieDay[on] || 0;
     let sx = Math.min(SORTIE_XP_MAX - had, sets * SORTIE_XP_SET);
     sortieDay[on] = had + sx;
     const nPR = Object.keys(prs[L.date] || {}).length;
-    sx += Math.round(nPR * XP_PR * (1 + 0.05 * bd.stats.agi));
     xp += sx; sortieCount++; perDay[L.date] = { xp: sx, prs: nPR };
   }
   // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
@@ -658,7 +662,7 @@ export function summarize(logs, meta, today) {
   const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const findNow = findChances(rawFind(build, on("luck", today)));
-  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
+  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.filter(p => !p.custom).length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
   const res = { xp, ...lv, sorties: sortieCount, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
   res.rewards = rewardList(res, meta);
   res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);

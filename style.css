@@ -308,3 +308,5 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .dayhead .ctitle{font-family:var(--caps);font-weight:500;font-size:22px;letter-spacing:.06em;padding:6px 8px}
 .mon.sortie{border-style:dashed}
 .mon.sortie svg{width:28px;height:28px}
+.sublink{border:0;background:none;color:var(--dust);font-family:var(--caps);letter-spacing:.1em;font-size:13px;text-decoration:underline;text-underline-offset:3px;padding:0 0 0 6px}
+.ex.cx .h em{flex:0 0 auto}
