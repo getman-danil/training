@@ -31,7 +31,7 @@
       "planWeight": "свой вес",
       "weight": "свой вес",
       "reps": [
-        null
+        10
       ],
       "note": ""
     },
@@ -63,9 +63,9 @@
   "game": {
     "monster": "Король гоблинов",
     "hp": 2160,
-    "dealt": 0,
+    "dealt": 540,
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793296532358
+  "updatedAt": 1793296539444
 }
