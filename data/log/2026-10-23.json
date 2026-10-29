@@ -30,7 +30,9 @@
       "plan": "3×12",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12
+      ],
       "note": ""
     },
     {
@@ -74,9 +76,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 240,
+    "dealt": 288,
     "overkill": 120,
     "killed": false
   },
-  "updatedAt": 1793289879485
+  "updatedAt": 1793290016519
 }
