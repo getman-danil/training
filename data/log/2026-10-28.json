@@ -3,7 +3,7 @@
   "week": 3,
   "block": "Блок 1. Возвращение",
   "title": "Б — жим + одна нога",
-  "performedOn": "2026-10-28",
+  "performedOn": null,
   "finished": false,
   "finishedAt": null,
   "dayNote": "",
@@ -75,5 +75,5 @@
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1793200132689
+  "updatedAt": 1793298830319
 }
