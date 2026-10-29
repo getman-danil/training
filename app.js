@@ -262,7 +262,7 @@ function exHTML(day, i, b) {
   const unit = pp.unit !== "повт" ? ` · ${pp.unit}` : "";
   const sub = li?.sub != null || subOpen.has(i);
   const head = sub
-    ? `<div class="h"><input class="cname" data-sub="${i}" list="exNames" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
+    ? `<div class="h"><input class="cname" data-sub="${i}" value="${esc(li?.sub || "")}" placeholder="чем заменил" aria-label="Чем заменил упражнение" autocomplete="off"><em>${esc(it.plan || "")}</em><button class="ghostbtn cdel" data-unsub="${i}" aria-label="Вернуть плановое упражнение">✕</button></div>
     <div class="spec">вместо: ${esc(it.name)} · подход засчитан, если повторов не меньше плановых · рекорд без крита</div>`
     : `<div class="h"><b>${esc(it.name)}</b><em>${esc(it.plan || "")}</em></div>
     <div class="spec">${esc([it.weight, it.rest].filter(Boolean).join(" · "))}${unit} <button class="sublink" data-subbtn="${i}">заменить</button></div>`;
@@ -291,7 +291,7 @@ function cxHTML(L, j) {
   const x = L.extra[j], prs = SUM.prs[L.date] || {}, reps = x.reps || [];
   const cells = reps.map((r, k) => { const has = r != null && +r > 0; return `<button class="${["set", has ? "d" : "", prs[`x${j}:${k}`] ? "pr" : ""].join(" ")}" data-cset="${j}:${k}"><small>${k + 1}</small>${has ? r : '<span class="g">·</span>'}</button>`; }).join("");
   return `<div class="ex cx" data-cx="${j}">
-    <div class="h"><input class="cname" data-cname="${j}" list="exNames" value="${esc(x.name)}" placeholder="упражнение" aria-label="Упражнение" autocomplete="off"><button class="ghostbtn cdel" data-cdel="${j}" aria-label="Убрать упражнение">✕</button></div>
+    <div class="h"><input class="cname" data-cname="${j}" value="${esc(x.name)}" placeholder="упражнение" aria-label="Упражнение" autocomplete="off"><button class="ghostbtn cdel" data-cdel="${j}" aria-label="Убрать упражнение">✕</button></div>
     <div class="sets">${cells}<button class="set add" data-cadd="${j}" aria-label="Добавить подход">+</button></div>
     <div class="fields"><input data-cw="${j}" value="${esc(x.weight)}" placeholder="вес" aria-label="Вес"><input data-cn="${j}" value="${esc(x.note)}" placeholder="заметка" aria-label="Заметка к упражнению"></div>
   </div>`;
@@ -509,6 +509,48 @@ main.addEventListener("change", e => {
   if (t.id === "sTitle" && cur?.sortie) { const L = curLog(); L.title = t.value.trim() || "Вылазка"; commitSortie(L); }
   if (t.id === "performedOn" && cur && t.value) { const L = curLog(true); L.performedOn = t.value; commitCur(L); if (cur.sortie) render(); }
   if (t.id === "dayNote" && cur) { const L = curLog(true); L.dayNote = t.value; commitCur(L); }
+});
+
+// ---------- список упражнений для своих и заменённых ----------
+// Тап по названию открывает список: упражнения из плана и свои, которые уже записывал. Набор текста фильтрует список,
+// а любое своё название можно просто вписать. Имена из плана — тогда рекорды и графики общие.
+const PLAN_EX = [...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name) && !i.name.includes(":")).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort((a, b) => a.localeCompare(b, "ru"));
+function ownEx() {
+  const plan = new Set(PLAN_EX.map(G.normName)), own = new Map();
+  for (const L of Object.values(S.logs)) {
+    if (!L || L.deleted) continue;
+    for (const x of [...(L.extra || []).map(x => x.name), ...(L.items || []).map(x => x.sub)]) {
+      const v = String(x || "").trim(), k = G.normName(v);
+      if (v && !plan.has(k) && !own.has(k)) own.set(k, v);
+    }
+  }
+  return [...own.values()].sort((a, b) => a.localeCompare(b, "ru"));
+}
+let exListFor = null;
+function showExList(inp) {
+  hideExList();
+  exListFor = inp;
+  const q = G.normName(inp.value), hit = n => !q || G.normName(n).includes(q);
+  const own = ownEx().filter(hit), plan = PLAN_EX.filter(hit);
+  const row = n => `<button type="button" class="exopt" data-exopt="${esc(n)}">${esc(n)}</button>`;
+  const typed = inp.value.trim(), exact = [...own, ...plan].some(n => G.normName(n) === q);
+  inp.closest(".h").insertAdjacentHTML("afterend", `<div class="exlist" id="exList">
+    ${typed && !exact ? `<button type="button" class="exopt mine" data-exopt="${esc(typed)}">+ своё: «${esc(typed)}»</button>` : ""}
+    ${own.length ? `<div class="exgrp">свои</div>${own.map(row).join("")}` : ""}
+    ${plan.length ? `<div class="exgrp">из плана</div>${plan.map(row).join("")}` : ""}
+    ${!typed ? `<div class="exgrp">или впиши своё название в поле</div>` : ""}
+  </div>`);
+}
+function hideExList() { $("#exList")?.remove(); exListFor = null; }
+main.addEventListener("focusin", e => { if (e.target.matches("input.cname")) showExList(e.target); });
+main.addEventListener("input", e => { if (e.target === exListFor) showExList(e.target); });
+main.addEventListener("focusout", e => { if (e.target === exListFor) setTimeout(() => { if (document.activeElement !== exListFor) hideExList(); }, 150); });
+// pointerdown, а не click: иначе поле теряет фокус раньше, чем срабатывает выбор.
+main.addEventListener("pointerdown", e => {
+  const o = e.target.closest("[data-exopt]"); if (!o || !exListFor) return;
+  e.preventDefault();
+  const inp = exListFor; inp.value = o.dataset.exopt; hideExList();
+  inp.dispatchEvent(new Event("change", { bubbles: true })); inp.blur();
 });
 
 // ---------- лист ввода повторов ----------
@@ -1009,8 +1051,6 @@ function renderSettings() {
 function renderSettingsMsg() { const m = $("#cfgMsg"); if (m) m.textContent = sync.msg || ""; }
 
 // ---------- старт ----------
-// Подсказки названий для своих упражнений: те же имена, что в плане, — тогда рекорды и графики общие.
-document.body.insertAdjacentHTML("beforeend", `<datalist id="exNames">${[...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name)).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort().map(n => `<option value="${esc(n)}">`).join("")}</datalist>`);
 clearEmptyDates(); recompute(); renderTop(); renderSync(); render();
 if (S.cfg.token) runSync().then(() => { clearEmptyDates(); recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
 else scheduleSync();
