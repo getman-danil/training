@@ -1,25 +1,34 @@
 // Встроенный разбор прогресса: работает без Claude и без интернета.
 // Ряды по упражнениям, выполнение плана по неделям и простые правила-подсказки.
-import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal } from "./game.js";
+import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal, isSortieKey, sortieDate } from "./game.js";
 
 // Ряд по каждому упражнению: лучшая попытка, сумма повторов, вес, доля плана.
+// Свои упражнения (дополнение, замена, вылазка) идут в те же ряды по названию, но без доли плана.
 export function exerciseSeries(logs) {
   const by = {};
-  for (const date of Object.keys(logs).sort()) {
-    const day = DAY_BY_DATE[date], L = logs[date]; if (!day || !L) continue;
-    day.items.forEach((it, i) => {
-      if (it.type !== "ex") return;
-      const li = L.items?.[i]; const reps = (li?.reps || []).map(Number).filter(r => r > 0);
+  for (const key0 of Object.keys(logs)) {
+    const day = DAY_BY_DATE[key0], L = logs[key0];
+    if (!L || L.deleted || (!day && !isSortieKey(key0))) continue;
+    const date = day ? key0 : sortieDate(L);
+    const rows = [
+      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && [it, L.items?.[i], parsePlan(it)]) : []),
+      ...(L.extra || []).map(x => [{ name: x.name, weight: "" }, x, { sets: 0, target: null, unit: "повт" }]),
+    ].filter(r => r && r[1] && String(r[0].name || "").trim());
+    rows.forEach(([it, li, pp]) => {
+      const reps = (li?.reps || []).map(Number).filter(r => r > 0);
       if (!reps.length) return;
-      const pp = parsePlan(it), key = normName(it.name);
+      const key = normName(it.name);
       const planned = pp.target ? pp.sets * pp.target : null;
       const total = reps.reduce((a, b) => a + b, 0);
       const weight = li.weight ?? it.weight ?? "";
-      (by[key] ||= { key, name: it.name.replace(/\s*\(.*?\)\s*/g, " ").trim(), unit: pp.unit, points: [] }).points.push({
+      const ser = by[key] ||= { key, name: it.name.replace(/\s*\(.*?\)\s*/g, " ").trim(), unit: pp.unit, points: [] };
+      if (pp.sets) ser.unit = pp.unit;   // единицы (сек, мин) знает только план
+      ser.points.push({
         date, best: Math.max(...reps), total, sets: reps.length, weight, kg: kg(weight), planPct: planned ? total / planned : null, note: li.note || "",
       });
     });
   }
+  for (const s of Object.values(by)) s.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return Object.values(by).sort((a, b) => b.points.length - a.points.length);
 }
 
@@ -32,7 +41,8 @@ export function weekly(logs, today) {
       const b = battle(d, logs[d.date]);
       hp += b.hp; dealt += b.dealt;
       if (b.setsDone) done++;
-      (logs[d.date]?.items || []).forEach(x => (x.reps || []).forEach(r => { if (+r > 0) reps += +r; }));
+      const L = logs[d.date];
+      [...(L?.replaced ? [] : L?.items || []), ...(L?.extra || [])].forEach(x => (x.reps || []).forEach(r => { if (+r > 0) reps += +r; }));
     }
     return { n: w.n, from: w.onFrom, to: w.onTo, pct: hp ? dealt / hp : 0, done, goal: weekGoal(w), reps, current: today <= w.onTo };
   });

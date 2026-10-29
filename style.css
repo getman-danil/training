@@ -299,3 +299,12 @@ select{font:inherit;color:var(--bone);background:var(--ash);border:1px solid var
 .beast.studied{border-color:#6b5b3a}
 .titles li.hard b{color:#5fd0b0}
 .titles li.locked{opacity:.5}
+/* своя тренировка и вылазки */
+.ex.cx .h{align-items:center}
+.ex.cx .cname{font-weight:600;font-size:18px;padding:6px 8px;flex:1}
+.ex.cx .cdel{flex:0 0 auto;width:38px;height:38px;border:1px solid var(--line2);color:var(--mute)}
+.offplan{margin-top:16px}
+.offplan .hint b{color:var(--bone);font-weight:600}
+.dayhead .ctitle{font-family:var(--caps);font-weight:500;font-size:22px;letter-spacing:.06em;padding:6px 8px}
+.mon.sortie{border-style:dashed}
+.mon.sortie svg{width:28px;height:28px}

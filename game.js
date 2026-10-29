@@ -193,11 +193,11 @@ export function dungeon(n) { return DUNGEONS[n] || DUNGEONS[((n - 1) % 4) + 1] |
 export function battle(day, log) {
   const exs = [];
   let hp = 0, dealt = 0, over = 0, setsDone = 0;
-  const mult = hpMult(day);
+  const mult = hpMult(day), replaced = !!log?.replaced;
   day.items.forEach((it, i) => {
     if (it.type !== "ex") return;
     const pp = parsePlan(it);
-    const reps = (log?.items?.[i]?.reps || []);
+    const reps = replaced ? [] : (log?.items?.[i]?.reps || []);
     const exHp = DMG * Math.min(pp.sets, MAX_SETS_HP) * mult, per = exHp / pp.sets;
     const lf = loadFactor(it, log?.items?.[i]);
     let d = 0, o = 0;
@@ -212,10 +212,32 @@ export function battle(day, log) {
     hp += exHp; dealt += d; over += o;
     exs.push({ i, pp, per, lf, dealt: d, over: o, hp: exHp, heavy: isHeavy(it, log?.items?.[i]) });
   });
+  // Свои упражнения: каждый подход стоит одного обычного планового. При замене это урон, но не больше REPLACE_CAP
+  // здоровья, — убить можно только планом. При дополнении это перебор, у которого общий потолок +20%.
+  const custom = customSets(log), cd = custom * DMG * mult;
+  if (replaced) dealt = Math.min(cd, hp * REPLACE_CAP); else over += cd;
+  setsDone += custom;
   hp = Math.round(hp); dealt = Math.round(dealt); over = Math.round(over);
-  const killed = hp > 0 && dealt >= hp - 0.5;
+  const killed = !replaced && hp > 0 && dealt >= hp - 0.5;
   const overXp = Math.round(Math.min(over, hp * OVERKILL_CAP));
-  return { hp, dealt, left: Math.max(0, hp - dealt), over, overXp, killed, exs, setsDone, pct: hp ? dealt / hp : 0, mult, lvl: monsterLevel(day) };
+  return { hp, dealt, left: Math.max(0, hp - dealt), over, overXp, killed, exs, setsDone, custom, replaced, pct: hp ? dealt / hp : 0, mult, lvl: monsterLevel(day) };
+}
+
+// ---------- своя тренировка ----------
+// Три режима, когда вышло не по плану:
+// • дополнить — свои упражнения в записи дня (log.extra), идут в перебор;
+// • заменить — log.replaced = true: плановые подходы не считаются, свои бьют монстра дня до 70% здоровья,
+//   он сбегает и приходит на реванш; неделя для серии засчитывается, потому что тренировка была;
+// • вылазка — отдельная запись вне плана с ключом "x-<дата>[-n]": немного опыта за подходы (не больше патруля в день),
+//   без золота, находок и серии. Рекорды из своих упражнений считаются везде.
+// log.extra = [{ name, weight, reps: [...], note }]
+export const REPLACE_CAP = 0.7;
+export const SORTIE_XP_SET = 2, SORTIE_XP_MAX = XP_CARDIO;
+export const isSortieKey = k => typeof k === "string" && k.startsWith("x-");
+export const sortieDate = L => L.performedOn || L.date.slice(2, 12);
+export function customSets(L) { return (L?.extra || []).reduce((a, x) => a + (x.reps || []).filter(r => +r > 0).length, 0); }
+export function sorties(logs) {
+  return Object.entries(logs).filter(([k, L]) => isSortieKey(k) && L && !L.deleted).map(([k, L]) => L).sort((a, b) => (sortieDate(a) < sortieDate(b) ? -1 : sortieDate(a) > sortieDate(b) ? 1 : 0));
 }
 
 // ---------- рекорды ----------
@@ -253,13 +275,18 @@ export function loadFactor(it, li) {
 // В список рекордов от одного упражнения за день попадает одна строка — с лучшим подходом дня.
 export function computePRs(logs) {
   const bestReps = {}, bestKg = {}, prs = {}, list = [];
-  const dates = Object.keys(logs).filter(d => DAY_BY_DATE[d]).sort();
+  // Вылазки встают в хронологию по своей дате; записи плана — по дате плана, как раньше.
+  const ord = d => (DAY_BY_DATE[d] ? d : sortieDate(logs[d]));
+  const dates = Object.keys(logs).filter(d => DAY_BY_DATE[d] || (isSortieKey(d) && logs[d] && !logs[d].deleted)).sort((a, b) => (ord(a) < ord(b) ? -1 : ord(a) > ord(b) ? 1 : a < b ? -1 : 1));
   for (const date of dates) {
     const day = DAY_BY_DATE[date], L = logs[date];
     const updates = [];
-    day.items.forEach((it, i) => {
-      if (it.type !== "ex") return;
-      const li = L.items?.[i]; if (!li) return;
+    // Плановые упражнения (кроме заменённого дня) и свои; ключ подхода — "i:k" для плана, "xj:k" для своих.
+    const rows = [
+      ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && [String(i), it, L.items?.[i]]) : []),
+      ...(L.extra || []).map((x, j) => [`x${j}`, { name: x.name, weight: "" }, x]),
+    ].filter(r => r && r[2] && String(r[1].name || "").trim());
+    rows.forEach(([i, it, li]) => {
       const name = normName(it.name), w = (li.weight ?? it.weight ?? "").trim().toLowerCase();
       const key = name + "|" + w, wk = kg(w);
       const preReps = bestReps[key], preKg = bestKg[name];
@@ -275,8 +302,8 @@ export function computePRs(logs) {
         }
       });
       if (dayBest) list.push(newKg
-        ? { date, name: it.name, kind: "kg", text: `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` }
-        : { date, name: it.name, kind: "reps", text: `${dayBest} повт. (было ${preReps})` });
+        ? { date: ord(date), key: date, name: it.name, kind: "kg", text: `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` }
+        : { date: ord(date), key: date, name: it.name, kind: "reps", text: `${dayBest} повт. (было ${preReps})` });
       updates.push([key, name, Math.max(...reps), wk]);
     });
     for (const [key, name, r, wk] of updates) {
@@ -490,7 +517,7 @@ export function weekOf(dateISO) {
 }
 // Бой засчитан, если есть записи и он завершён — или день уже прошёл (перенос из тетради без кнопки «Завершить»).
 // Пропущенный день (skipped) и пустой день просто не засчитываются: никаких других последствий.
-function dayFinished(L, past) { return !!(L && !L.skipped && (L.finished || past) && L.items?.some(x => (x.reps || []).some(r => +r > 0) || x.done)); }
+function dayFinished(L, past) { return !!(L && !L.skipped && (L.finished || past) && (customSets(L) > 0 || (!L.replaced && L.items?.some(x => (x.reps || []).some(r => +r > 0) || x.done)))); }
 
 export function weekStatus(w, logs, meta, today) {
   const goal = weekGoal(w);
@@ -594,6 +621,18 @@ export function summarize(logs, meta, today) {
     if (late) nightOwl++;
     xp += dx; perDay[d.date] = { xp: dx, gold: dg, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
+  // Вылазки вне плана: опыт за подходы, не больше патруля за день, плюс криты. Без золота, находок и серии.
+  const sortieDay = {};
+  let sortieCount = 0;
+  for (const L of sorties(logs)) {
+    const sets = customSets(L); if (!sets) continue;
+    const on = sortieDate(L), bd = buildAt(meta, on), had = sortieDay[on] || 0;
+    let sx = Math.min(SORTIE_XP_MAX - had, sets * SORTIE_XP_SET);
+    sortieDay[on] = had + sx;
+    const nPR = Object.keys(prs[L.date] || {}).length;
+    sx += Math.round(nPR * XP_PR * (1 + 0.05 * bd.stats.agi));
+    xp += sx; sortieCount++; perDay[L.date] = { xp: sx, prs: nPR };
+  }
   // Перки выносливости 10: награды за неделю и за подземелье начисляются по билду на конец недели / блока.
   for (const w of WEEKS) {
     const ds = w.days.filter(regular);
@@ -620,7 +659,7 @@ export function summarize(logs, meta, today) {
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const findNow = findChances(rawFind(build, on("luck", today)));
   const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.length, streakBest: sk.best, bossKills, killed, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  const res = { xp, ...lv, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
+  const res = { xp, ...lv, sorties: sortieCount, revenges, kills, fled, cardio, finds, killed, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
   res.rewards = rewardList(res, meta);
   res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);
   res.honor = honorAt(meta, "9999-12-31");
