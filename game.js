@@ -47,6 +47,9 @@ export const MONSTERS = {
   "boss-ancient-dragon": M("boss-ancient-dragon", "Древний дракон", "dragon-wyvern", { boss: true, placeholder: true }),
   "boss-demon-lord": M("boss-demon-lord", "Повелитель демонов", "boss-demon-lord", { boss: true }),
   "boss-minotaur-king": M("boss-minotaur-king", "Король минотавров", "boss-minotaur-king", { boss: true }),
+  // Боссы событий: приходят в свои даты вместо монстра обычной тренировки.
+  "boss-lich": M("boss-lich", "Лич-экзаменатор", "boss-lich", { event: true }),
+  "boss-frost-giant": M("boss-frost-giant", "Ледяной великан", "boss-frost-giant", { event: true }),
   "tavern-keeper": M("tavern-keeper", "Хозяин таверны", "", { tavern: true, placeholder: true, img: null }),
 };
 
@@ -99,6 +102,38 @@ export const NEW_BEASTS = [...SWAMP.pool, "demon-imp", "demon-hound", "demon-exe
 export const HP_PER_LVL = 0.2;      // каждый уровень монстра добавляет 20% к его здоровью и к цифрам урона по нему
 export const BOSS_HP = 6;           // в тестах мало подходов, поэтому у боссов отдельный множитель
 export const LVL_XP_STEP = 0.08, LVL_XP_MIN = 0.75, LVL_XP_MAX = 1.4;
+// ---------- события ----------
+// Нашествие нежити: недели сессии (блоки 2 и 7); в конце каждой сессии приходит Лич-экзаменатор.
+// Ледяная ночь: первый бой после новогодней недели — Ледяной великан. Боссы событий на 2 уровня выше,
+// убийство ×2 опыта и ×3 золота, плюс трофей. Убить — как и всегда — значит выполнить план целиком.
+// Кровавая луна: раз в полтора-два месяца один бой, монстр на уровень выше, опыт за убийство ×1,3.
+// Ярмарка: неделя, когда торговец и кузница берут на четверть меньше.
+export const EVENT_BY_DATE = {
+  "2026-12-24": { id: "boss-lich", ev: "invasion", trophy: "Зачётка в костяном переплёте" },
+  "2027-01-04": { id: "boss-frost-giant", ev: "winter", trophy: "Вечная сосулька" },
+  "2027-06-24": { id: "boss-lich", ev: "invasion", trophy: "Диплом, подписанный тьмой" },
+};
+export const EVENT_KILL = 2, EVENT_GOLD = 3, MOON_KILL = 1.3, FAIR_DISCOUNT = 0.25;
+export const SESSION_BLOCKS = [2, 7];
+export const MOON_DATES = new Set(["2026-11-11", "2027-01-20", "2027-02-24", "2027-04-21", "2027-05-12", "2027-07-21", "2027-08-25"]);
+export const FAIR_WEEKS = new Set([14, 40]);
+export const EVENTS = [
+  { id: "invasion", name: "Нашествие нежити", desc: "Сессия: склеп полон нежити, в конце приходит Лич-экзаменатор" },
+  { id: "winter", name: "Ледяная ночь", desc: "После новогодней недели с гор спускается Ледяной великан" },
+  { id: "moon", name: "Кровавая луна", desc: `Монстр на уровень выше, опыт за убийство ×${MOON_KILL}`.replace(".", ",") },
+  { id: "fair", name: "Ярмарка", desc: `Неделя скидок: торговец и кузница −${FAIR_DISCOUNT * 100}%` },
+];
+export function isSession(day) { return SESSION_BLOCKS.includes(day.blockN); }
+export function isMoon(day) { return MOON_DATES.has(day.date) && regular(day); }
+// Что происходит в неделе — для подписи в Походе.
+export function weekEvents(w) {
+  const out = [];
+  if (w.days.some(d => isSession(d))) out.push("нашествие нежити");
+  if (FAIR_WEEKS.has(w.n)) out.push("ярмарка");
+  if (w.days.some(d => isMoon(d))) out.push("кровавая луна");
+  if (w.days.some(d => EVENT_BY_DATE[d.date]?.ev === "winter")) out.push("ледяная ночь");
+  return out;
+}
 const MINIBOSS_BY_DATE = { "2026-11-13": "goblin-chief", "2027-03-05": "lizard-chief", "2027-07-30": "treant-ancient" };
 // Тесты по порядку: 20.11, 31.03, 03.04, а в конце года — повелитель демонов (29.09) и король минотавров (02.10).
 const BOSS_ORDER = ["boss-goblin-king", "boss-orc-warlord", "boss-ancient-dragon", "boss-demon-lord", "boss-minotaur-king"];
@@ -154,6 +189,7 @@ export function monsterFor(day) {
   if (isCardio(day)) return null;
   if (BOSS_BY_DATE[day.date]) return MONSTERS[BOSS_BY_DATE[day.date]];
   if (MINIBOSS_BY_DATE[day.date]) return MONSTERS[MINIBOSS_BY_DATE[day.date]];
+  if (EVENT_BY_DATE[day.date]) return { ...MONSTERS[EVENT_BY_DATE[day.date].id], trophy: EVENT_BY_DATE[day.date].trophy };
   if (isTavern(day)) return MONSTERS["tavern-keeper"];
   if (REVENGE[day.date]) { const r = REVENGE[day.date]; return r.elite ? eliteOf(MONSTERS[r.id]) : MONSTERS[r.id]; }
   return isElite(day) ? eliteOf(planMonster(day)) : planMonster(day);
@@ -183,7 +219,7 @@ function expectedLevel(day) {
       const lvl = EXP_LVL[d.date] = levelFromXp(xp).level;
       if (isCardio(d)) { xp += XP_CARDIO; continue; }
       const hp = d.items.filter(i => i.type === "ex").reduce((a, i) => a + DMG * Math.min(parsePlan(i).sets, MAX_SETS_HP), 0);
-      const off = BOSS_BY_DATE[d.date] ? 3 : MINIBOSS_BY_DATE[d.date] ? 2 : isTavern(d) ? 0 : packIndex(d) - 1;
+      const off = BOSS_BY_DATE[d.date] ? 3 : MINIBOSS_BY_DATE[d.date] || EVENT_BY_DATE[d.date] ? 2 : isTavern(d) ? 0 : packIndex(d) - 1;
       xp += (hp * XP_PER_HP + XP_KILL * (BOSS_BY_DATE[d.date] ? 3 : 1)) * levelXpMod(Math.max(1, lvl + off), lvl, { nodes: [] }) + Object.keys(prs[d.date] || {}).length * XP_PR;
       if (TAVERN_WEEKS.has(d.week - 1) && !buff.has(d.week)) { buff.add(d.week); xp += XP_TAVERN_BUFF; }
     }
@@ -196,10 +232,10 @@ export function monsterLevel(day) {
   if (isCardio(day)) return 0;
   const base = expectedLevel(day);
   if (BOSS_BY_DATE[day.date]) return base + 3;
-  if (MINIBOSS_BY_DATE[day.date]) return base + 2;
+  if (MINIBOSS_BY_DATE[day.date] || EVENT_BY_DATE[day.date]) return base + 2;
   if (isTavern(day)) return base;
   if (REVENGE[day.date]) return monsterLevel(DAY_BY_DATE[REVENGE[day.date].from]) + REVENGE[day.date].n;
-  return Math.max(1, base - 1 + packIndex(day)) + (isElite(day) ? 1 : 0);
+  return Math.max(1, base - 1 + packIndex(day)) + (isElite(day) ? 1 : 0) + (isMoon(day) ? 1 : 0);
 }
 export function hpMult(day) {
   if (isCardio(day)) return 1;
@@ -210,7 +246,7 @@ export function hpMult(day) {
 // не кардио и не «по желанию»). Возвращается один раз: если сбежит снова — ушёл насовсем.
 // Считается заново из записей, поэтому одинаково на всех устройствах. Ключ — дата дня в плане.
 export let REVENGE = {};
-function regular(d) { return !isCardio(d) && !isOptional(d) && !isTavern(d) && !BOSS_BY_DATE[d.date] && !MINIBOSS_BY_DATE[d.date]; }
+function regular(d) { return !isCardio(d) && !isOptional(d) && !isTavern(d) && !BOSS_BY_DATE[d.date] && !MINIBOSS_BY_DATE[d.date] && !EVENT_BY_DATE[d.date]; }
 export function fledOn(day, log, today) {
   if (!log || log.skipped) return false;
   const b = battle(day, log);
@@ -238,6 +274,7 @@ export function isTavern(day) {
 }
 export function locationFor(day) {
   if (BOSS_BY_DATE[day.date]) return "Логово босса";
+  if (EVENT_BY_DATE[day.date]?.ev === "winter") return "Ледяной перевал";
   if (isTavern(day)) return "Таверна «Ржавая гиря»";
   return dungeonFor(day).name;
 }
@@ -478,7 +515,8 @@ export const UNIQUE_FX = {
 // meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
 export const GOLD_KILL = 10, GOLD_BOSS = 60;
 export const PRICE_COMMON = 50, FORGE_FEE = 30, MYTHIC_COST = 800;
-export const priceOf = (base, b) => Math.round(base * (hasPerk(b, "merchant") ? 0.7 : 1));
+export const isFair = iso => !!iso && FAIR_WEEKS.has(weekOf(iso).n);
+export const priceOf = (base, b, iso) => Math.round(base * (hasPerk(b, "merchant") ? 0.7 : 1) * (isFair(iso) ? 1 - FAIR_DISCOUNT : 1));
 const pick = (arr, key) => arr[Math.floor(hash01(key) * arr.length) % arr.length];
 // Вещь целиком выводится из своего id, поэтому одинакова на всех устройствах и ничего не хранится, кроме id.
 // id: "c:<дата>" — находка в обычном бою, "b:<дата>" — добыча с босса, "L:<дата>" — гарантированная легенда («Трофейщик»),
@@ -612,7 +650,8 @@ export function summarize(logs, meta, today) {
   let revenges = 0, finds = 0, gold = 0;
   const loot = [];
   let xp = 0, kills = 0, fled = 0, cardio = 0, overkills = 0, nightOwl = 0;
-  const killed = {}, bossKills = [], perDay = {}, eliteKilled = {};
+  const killed = {}, bossKills = [], perDay = {}, eliteKilled = {}, eventKills = [];
+  let moonKills = 0;
   const tavernBuffWeeks = new Set(), weekFirst = new Set();
   // Награды: заряды Вдохновения расходуются по одному на бой, изученные виды дают бонус с даты, когда их забрали.
   const claims = claimsOf(meta);
@@ -652,13 +691,15 @@ export function summarize(logs, meta, today) {
     const when = whenOf(d, L);
     if (b.killed) {
       // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
+      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
       dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
       if (m?.elite) kx *= ELITE_KILL;
+      if (m?.event) kx *= EVENT_KILL;
+      if (isMoon(d)) kx *= MOON_KILL;
       if (nPR && hasPerk(bd, "precise")) kx += 30;
       dx += Math.round(kx * mod);
-      kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (m.elite) eliteKilled[m.id] = (eliteKilled[m.id] || 0) + 1; if (b.over >= b.hp * OVERKILL_CAP) overkills++;
+      kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (m.elite) eliteKilled[m.id] = (eliteKilled[m.id] || 0) + 1; if (m.event) eventKills.push(d.date); if (isMoon(d)) moonKills++; if (b.over >= b.hp * OVERKILL_CAP) overkills++;
       if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0) + (hasPerk(bd, "h-revenge") ? 40 : 0); revenges++; }
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
       if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
@@ -680,7 +721,7 @@ export function summarize(logs, meta, today) {
     if (inspired) mul += hasPerk(bd, "u-inspire") ? INSPIRE_U : BUFFS.ins.val;
     dx = Math.round(dx * mul);
     if (late) nightOwl++;
-    xp += dx; perDay[d.date] = { xp: dx, gold: dg, trophy: b.killed && m?.elite ? m.trophy : null, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
+    xp += dx; perDay[d.date] = { xp: dx, gold: dg, trophy: b.killed && (m?.elite || m?.event) ? m.trophy : null, battle: b, prs: nPR, find, mod, heroLvl: hLvl, inspired, loot: loot.filter(x => x.date === d.date).map(x => x.id) };
   }
   // Вылазки вне плана: опыт за подходы, не больше патруля за день. Рекорды записываются без крита. Без золота, находок и серии.
   const sortieDay = {};
@@ -718,8 +759,8 @@ export function summarize(logs, meta, today) {
   const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const findNow = findChances(rawFind(build, on("luck", today)));
-  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.filter(p => !p.custom).length, streakBest: sk.best, bossKills, killed, eliteKilled, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
-  const res = { xp, ...lv, sorties: sortieCount, revenges, kills, fled, cardio, finds, killed, eliteKilled, eliteKills: Object.values(eliteKilled).reduce((a, b) => a + b, 0), bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
+  const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.filter(p => !p.custom).length, streakBest: sk.best, bossKills, killed, eliteKilled, eventKills, moonKills, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
+  const res = { xp, ...lv, sorties: sortieCount, revenges, kills, fled, cardio, finds, killed, eliteKilled, eliteKills: Object.values(eliteKilled).reduce((a, b) => a + b, 0), eventKills, moonKills, bossKills, prList, prs, perDay, streak: sk, achievements: ach, points, spent, free: points - spent, skillPoints, skillSpent, skillFree: skillPoints - skillSpent, build, inventory, goldEarned: Math.floor(gold), goldSpent: spentGold, gold: Math.floor(gold) - spentGold, findNow };
   res.rewards = rewardList(res, meta);
   res.honors = claims.map(e => rewardOf(e.id).honor).filter(Boolean);
   res.honor = honorAt(meta, "9999-12-31");
@@ -730,6 +771,11 @@ export function summarize(logs, meta, today) {
   return res;
 }
 
+// Сессия пережита: в блоке нет ни одной недели со статусом «пропуск» и все недели уже прошли.
+function sessionSurvived(n, weeks) {
+  const ws = WEEKS.filter(w => w.days[0]?.blockN === n).map(w => weeks.find(x => x.n === w.n));
+  return ws.length > 0 && ws.every(x => x && (x.status === "ok" || x.status === "frozen"));
+}
 function dungeonCleared(n, logs) {
   const ds = DAYS.filter(d => d.blockN === n && !isCardio(d) && !isOptional(d) && !isTavern(d) && !BOSS_BY_DATE[d.date]);
   // День засчитан, если монстр убит сразу или добит на реванше.
@@ -782,6 +828,12 @@ export function achievements(s) {
     A("elite1", "Охотник на матёрых", "Убить элитного монстра", Object.keys(s.eliteKilled).length >= 1),
     A("elite5", "Гроза элиты", "Убить 5 элитных монстров", Object.values(s.eliteKilled).reduce((a, b) => a + b, 0) >= 5),
     A("trophies", "Коллекционер", "Собрать трофеи 4 разных элитных монстров", Object.keys(s.eliteKilled).length >= 4),
+    A("session1", "Зимняя сессия сдана", "Ни одной пропущенной недели за блок 2 (заморозки не в счёт)", sessionSurvived(2, s.weeks)),
+    A("session2", "Летняя сессия сдана", "Ни одной пропущенной недели за блок 7 (заморозки не в счёт)", sessionSurvived(7, s.weeks)),
+    A("lich", "Экзамен сдан", "Победить Лича-экзаменатора", s.eventKills.some(d => EVENT_BY_DATE[d].id === "boss-lich")),
+    A("lich2", "Отличник", "Победить Лича-экзаменатора в обе сессии", s.eventKills.filter(d => EVENT_BY_DATE[d].id === "boss-lich").length >= 2),
+    A("frost", "Ледокол", "Победить Ледяного великана", s.eventKills.some(d => EVENT_BY_DATE[d].id === "boss-frost-giant")),
+    A("moon3", "Дитя кровавой луны", "Убить 3 монстров под кровавой луной", s.moonKills >= 3),
     A("beasts", "Знаток тварей", "Убить хотя бы по разу всех 12 монстров первого полугодия", OLD_BEASTS.every(id => id in s.killed)),
     A("beasts2", "Знаток тварей II", "Убить хотя бы по разу всех ящеролюдов, демонов, энтов и минотавров", NEW_BEASTS.every(id => id in s.killed)),
   ];
@@ -814,6 +866,8 @@ export const ACH_REWARDS = {
   buy1: R({ gold: 10 }), forge1: R({ gold: 10 }), mythic: R({ ins: 14 }), beasts: R({ gold: 20, lk: 7 }),
   d8: R({ gold: 20, gb: 7 }), swamp: R({ gold: 15, lk: 5 }), "chief-lizard": R({ ins: 5, gold: 10 }), "chief-treant": R({ ins: 5, lk: 5 }),
   boss4: R({ ins: 7, gb: 5 }), boss5: R({ ins: 7, lk: 7 }), beasts2: R({ gold: 30, ins: 7 }),
+  session1: R({ gold: 20, ins: 7 }), session2: R({ gold: 20, ins: 7 }), lich: R({ ins: 5, lk: 5 }), lich2: R({ gold: 30, ins: 7 }),
+  frost: R({ gb: 7, ins: 5 }), moon3: R({ gold: 15, lk: 5 }),
   elite1: R({ gold: 15, ins: 3 }), elite5: R({ gb: 7, ins: 5 }), trophies: R({ gold: 30, lk: 7 }),
 };
 // Награда за титул: индекс в TITLES (0 — «Странник», его не дают).

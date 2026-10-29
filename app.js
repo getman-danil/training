@@ -1,7 +1,7 @@
 // Интерфейс: Бой (тренировка дня с монстром), Поход (недели и подземелья), Прогресс (анализ), Герой, Настройки.
 import * as G from "./game.js";
 import { S, save, touchLog, touchMeta, runSync, scheduleSync, onSync, sync, dirtyCount, exportAll } from "./store.js";
-import { exerciseSeries, weekly, hints } from "./analysis.js";
+import { exerciseSeries, weekly, hints, yearStats } from "./analysis.js";
 
 const $ = s => document.querySelector(s);
 const main = $("#main");
@@ -99,7 +99,7 @@ function render() {
   const tab = r.tab === "sortie" ? "battle" : r.tab;
   document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (r.tab === "journey") renderJourney();
-  else if (r.tab === "progress") renderProgress();
+  else if (r.tab === "progress") { if (r.arg === "year") renderYear(); else renderProgress(); }
   else if (r.tab === "hero") renderHero();
   else if (r.tab === "chronicle") renderChronicle();
   else if (r.tab === "settings") renderSettings();
@@ -127,7 +127,8 @@ function renderBattle(date) {
   const w = G.WEEKS.find(x => x.n === day.week), wi = G.WEEKS.indexOf(w);
   const t = todayISO();
   const days = w.days.map(d => `<button class="day ${d.on === t ? "today" : ""} ${dayState(d)}" data-go="${d.date}" aria-current="${d.date === date}">${DOW[G.dowOf(d.on)]}<small>${fmt(d.on)}</small></button>`).join("");
-  const loc = `${G.locationFor(day).toUpperCase()} · НЕДЕЛЯ ${day.week}`;
+  const ev = G.weekEvents(w);
+  const loc = `${G.locationFor(day).toUpperCase()} · НЕДЕЛЯ ${day.week}${ev.length ? " · " + ev.join(", ").toUpperCase() : ""}`;
   let html = `<div class="loc">${esc(loc)}</div>
   <div class="daynav"><button class="arr" data-wk="${wi - 1}" ${wi === 0 ? "disabled" : ""} aria-label="Прошлая неделя">‹</button><div class="days">${days}</div><button class="arr" data-wk="${wi + 1}" ${wi === G.WEEKS.length - 1 ? "disabled" : ""} aria-label="Следующая неделя">›</button></div>`;
   html += G.isCardio(day) ? cardioHTML(day, L) : stageHTML(day) + exercisesHTML(day);
@@ -137,10 +138,11 @@ function renderBattle(date) {
 
 function stageHTML(day) {
   const m = G.monsterFor(day);
-  const cls = m.boss ? "boss" : m.tavern ? "tavern" : m.elite ? "elite" : "";
+  const moon = G.isMoon(day);
+  const cls = [m.boss || m.event ? "boss" : m.tavern ? "tavern" : m.elite ? "elite" : "", moon ? "moon" : "", m.event ? "event" : ""].join(" ");
   const art = m.tavern ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
   const rv = G.REVENGE[day.date];
-  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.elite ? "ЭЛИТА" : m.chief ? "ВОЖАК" : "";
+  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.event ? "СОБЫТИЕ" : moon ? "КРОВАВАЯ ЛУНА" : m.elite ? "ЭЛИТА" : m.chief ? "ВОЖАК" : "";
   return `<div class="stage ${cls}" id="stage">
     <div class="fog"></div>
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
@@ -589,7 +591,7 @@ function renderJourney() {
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
     h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
-      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · " + esc(G.SWAMP.name) : ""}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
+      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · " + esc(G.SWAMP.name) : ""}${G.weekEvents(w).map(e => ` · <span class="evt">${esc(e)}</span>`).join("")}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
       <div class="r">${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
   }
   main.innerHTML = h;
@@ -623,8 +625,46 @@ function renderProgress() {
     <ul class="list">${s.points.slice(-8).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.weight || "свой вес")}</span><span>${p.sets} подх., лучш. ${p.best}, всего ${p.total}${p.planPct != null ? ` · ${Math.round(p.planPct * 100)}%` : ""}</span></li>`).join("")}</ul>`;
   } else h += `<p class="hint">Здесь появятся графики после первых записей.</p>`;
   h += `<h2 class="sec">ЛИЧНЫЕ РЕКОРДЫ</h2><ul class="list">${SUM.prList.slice(-12).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.name)}</span><span>${esc(p.text)}</span></li>`).join("") || "<li><span>Пока нет — первый крит впереди.</span></li>"}</ul>`;
+  h += `<a class="act yearbtn" href="#/progress/year">ИТОГИ ГОДА</a>`;
   main.innerHTML = h;
   $("#exSel")?.addEventListener("change", e => { chosenEx = e.target.value; renderProgress(); });
+}
+
+// ---------- итоги года: вся статистика за план, доступна всегда ----------
+function renderYear() {
+  const t = todayISO(), s = SUM, y = yearStats(S.logs, s, t);
+  const num = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const fight = (x, extra) => x ? `<li><span>${fmt(x.date)} · ${esc(x.name)}</span><span>${extra}</span></li>` : "";
+  const recLi = r => `<li><span>${esc(r.name)}<small> · ${r.n} трен.</small></span><span>${r.grew ? `${unitTxt(r.from, r.unit)} → <b class="gold">${unitTxt(r.to, r.unit)}</b>` : unitTxt(r.to, r.unit)}</span></li>`;
+  const unitTxt = (p, unit) => `${p.best} ${unit === "сек" ? "с" : unit === "мин" ? "мин" : "повт."}${p.kg > 0 ? " · " + esc(p.weight) : ""}`;
+  let h = `<p class="lead">Итоги года</p><p class="sub">${fmt(G.WEEKS[0].onFrom)}.${G.WEEKS[0].onFrom.slice(0, 4)} — сегодня. Считается из журнала, обновляется после каждой тренировки. <a href="#/progress">← к анализу</a></p>
+  <div class="stats"><div><b>${y.fights}</b><span>боёв</span></div><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.cardio}</b><span>патрулей</span></div>
+  <div><b>${num(y.reps)}</b><span>повторов</span></div><div><b>${num(y.sets)}</b><span>подходов</span></div><div><b>${y.tonnage >= 10000 ? (y.tonnage / 1000).toFixed(1).replace(".", ",") + " т" : num(y.tonnage) + " кг"}</b><span>поднято</span></div>
+  <div><b>${y.planPct == null ? "—" : Math.round(y.planPct * 100) + "%"}</b><span>плана</span></div><div><b>${s.streak.best}</b><span>лучшая серия</span></div><div><b>${s.prList.filter(p => !p.custom).length}</b><span>рекордов</span></div>
+  <div><b>${s.level}</b><span>уровень</span></div><div><b>${num(s.goldEarned)}</b><span>золота добыто</span></div><div><b>${s.eliteKills}</b><span>элиты</span></div></div>
+  <h2 class="sec">КАЛЕНДАРЬ</h2>${yearCalendar(y.cal, t)}
+  <div class="legend"><span style="--c:var(--gold)">монстр убит</span><span style="--c:#8e1a12">сбежал</span><span style="--c:#6b5b3a">патруль</span><span style="--c:#3a3630">пропуск</span></div>
+  <h2 class="sec">РЕКОРДЫ: БЫЛО → СТАЛО</h2><ul class="list">${y.records.slice(0, 12).map(recLi).join("") || "<li><span>Появятся после первых тренировок.</span></li>"}</ul>
+  ${y.records.length > 12 ? `<details class="more"><summary>ещё упражнения: ${y.records.length - 12}</summary><ul class="list">${y.records.slice(12).map(recLi).join("")}</ul></details>` : ""}
+  <h2 class="sec">ЛУЧШИЕ БОИ</h2><ul class="list">${fight(y.bestXp, `+${y.bestXp?.xp} опыта`)}${fight(y.bestOver, `перебор ${Math.round((y.bestOver?.battle.over || 0) / (y.bestOver?.battle.hp || 1) * 100)}%`)}${fight(y.bestCrit, `${y.bestCrit?.prs} крит.`)}` + (y.bestXp ? "" : "<li><span>Пока не было боёв.</span></li>") + `</ul>
+  <h2 class="sec">БОЛЬШИЕ ПОБЕДЫ</h2><ul class="list">${y.big.map(b => `<li><span>${fmt(b.date)} · ${esc(b.name)}</span><span>+${b.xp} опыта</span></li>`).join("") || "<li><span>Первый вожак — Грызь, 13.11.</span></li>"}</ul>
+  <h2 class="sec">УБИТО ПО СЕМЬЯМ</h2><ul class="list">${y.families.map(f => `<li><span>${esc(f.name)}</span><span>${f.n}</span></li>`).join("") || "<li><span>Пока никого.</span></li>"}</ul>`;
+  main.innerHTML = h;
+}
+// Календарь: столбец — неделя плана, строка — день недели (пн сверху).
+function yearCalendar(cal, t) {
+  const start = G.WEEKS[0].onFrom, n = G.WEEKS.length, C = 8, W = n * C, H = 7 * C + 12;
+  const color = { kill: "#c9a24a", fled: "#8e1a12", cardio: "#6b5b3a", skip: "#3a3630", plan: "#1c1a17" };
+  let cells = "";
+  for (let k = 0; k < n * 7; k++) {
+    const iso = G.addDays(start, k), st = cal[iso];
+    if (!st) continue;
+    const col = Math.floor(k / 7), row = k % 7;
+    cells += `<rect x="${col * C}" y="${row * C}" width="${C - 1}" height="${C - 1}" fill="${color[st]}" ${st === "plan" && iso < t ? 'stroke="#3a1410"' : ""}><title>${fmt(iso)}</title></rect>`;
+  }
+  const months = [];
+  for (let col = 0; col < n; col++) { const iso = G.addDays(start, col * 7); if (col === 0 || iso.slice(8, 10) <= "07") months.push(`<text x="${col * C}" y="${H - 1}">${["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][+iso.slice(5, 7) - 1]}</text>`); }
+  return `<svg class="chart cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="Календарь тренировок">${cells}${months.join("")}</svg>`;
 }
 
 function lineChart(pts, label, color = "#efe8d6") {
@@ -673,6 +713,7 @@ function renderHero() {
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
   <p>Элита: иногда обычный монстр приходит матёрым — та же тварь в золотой ауре, на уровень выше. Убить его тоже можно только выполнив план; за это ×${G.ELITE_KILL} опыта за убийство, ×${G.ELITE_GOLD} золота и трофей в коллекцию Летописи.</p>
+  <p>События: в сессию склеп полон нежити, а в её конце приходит Лич-экзаменатор; после новогодней недели — Ледяной великан. Боссы событий на 2 уровня выше: ×${G.EVENT_KILL} опыта и ×${G.EVENT_GOLD} золота за убийство и трофей. Под кровавой луной монстр на уровень выше, опыт за убийство ×${String(G.MOON_KILL).replace(".", ",")}. На ярмарке торговец и кузница берут на ${G.FAIR_DISCOUNT * 100}% меньше. Даты — в Летописи.</p>
   <p>Блоки плана — подземелья, тесты — боссы, разгрузочные недели — таверна: серия не рвётся, а первый бой после таверны даёт +${G.XP_TAVERN_BUFF} бодрости.</p>
   <p>За достижения, новые титулы и первое убийство каждого вида монстров дают награды — их забирают в Летописи. Бафы действуют несколько дней с того дня, как награду забрали: ${Object.values(G.BUFFS).map(b => `${b.name} — ${b.desc}`).join(", ")}. Тот же баф ещё раз продлевает срок. Часть достижений вместо награды даёт почётный титул: его эффект работает, пока титул надет, носить можно один. Изученный вид монстров даёт +${Math.round(G.STUDY * 100)}% опыта в боях с ним. За самые трудные достижения и титул «Легенда» — уникальные вещи: +1 к характеристике и два особых эффекта. Всё действует с того дня, как награду забрали.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
@@ -704,6 +745,10 @@ function renderChronicle() {
     const m = G.eliteOf(G.MONSTERS[id]), k = s.eliteKilled[id] || 0;
     h += `<div class="beast elite ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : "не встречен"}</span>${k ? `<span class="st">${esc(m.trophy)}</span>` : ""}</div>`;
   }
+  // События года: что и когда, боссы событий и их трофеи.
+  h += `</div><h2 class="sec">СОБЫТИЯ ГОДА</h2><ul class="list titles events">${G.EVENTS.map(e => `<li><span><b>${esc(e.name)}</b><small>${esc(e.desc)}</small></span></li>`).join("")}
+  ${Object.entries(G.EVENT_BY_DATE).map(([d, e]) => { const m = G.MONSTERS[e.id], k = s.eventKills.includes(d); return `<li class="${k ? "" : "locked"}"><span><b>${esc(m.name)} · ${fmt(G.DAY_BY_DATE[d].on)}</b><small>${k ? "повержен · трофей: " + esc(e.trophy) : `×${G.EVENT_KILL} опыта и ×${G.EVENT_GOLD} золота за убийство, трофей`}</small></span></li>`; }).join("")}
+  <li><span><b>Кровавая луна</b><small>${[...G.MOON_DATES].map(fmt).join(", ")} · убито под луной: ${s.moonKills}</small></span></li></ul><div>`;
   // Почётные титулы: получены за достижения, носится один. Пустой id — снова носить титул уровня.
   h += `</div><h2 class="sec">ПОЧЁТНЫЕ ТИТУЛЫ</h2><p class="sub">Даются вместо награды за некоторые достижения. Эффект работает, пока титул надет.</p><ul class="list titles">${Object.entries(G.HONOR).map(([id, t]) => {
     const own = s.honors.includes(id), worn = s.honor === id;
@@ -790,9 +835,9 @@ function gearHTML(s) {
 let shopSlot = "weapon", shopStat = "str", forgeSel = [];
 function shopHTML(s) {
   const b = s.build, gold = s.gold;
-  const pc = G.priceOf(G.PRICE_COMMON, b), fee = G.priceOf(G.FORGE_FEE, b), myth = G.priceOf(G.MYTHIC_COST, b);
+  const pc = G.priceOf(G.PRICE_COMMON, b, todayISO()), fee = G.priceOf(G.FORGE_FEE, b, todayISO()), myth = G.priceOf(G.MYTHIC_COST, b, todayISO());
   const preview = G.itemOf(`s:${shopSlot}:${shopStat}:0`);
-  let h = `<h2 class="sec">ТОРГОВЕЦ</h2><p class="sub">Золото: <b class="gold">${gold}</b> · всего добыто ${s.goldEarned}. Золото дают только убийства.</p>
+  let h = `<h2 class="sec">ТОРГОВЕЦ</h2><p class="sub">Золото: <b class="gold">${gold}</b> · всего добыто ${s.goldEarned}. Золото дают только убийства.${G.isFair(todayISO()) ? ` <b class="gold">Ярмарка: всё на ${G.FAIR_DISCOUNT * 100}% дешевле до конца недели.</b>` : ""}</p>
   <div class="ttabs s4">${G.SLOTS.map(sl => `<button data-sslot="${sl.id}" aria-current="${shopSlot === sl.id}">${sl.name}</button>`).join("")}</div>
   <div class="ttabs">${G.STATS.map(st => `<button data-sstat="${st.id}" aria-current="${shopStat === st.id}">${st.name}</button>`).join("")}</div>
   <button class="act ${gold >= pc ? "gold" : ""}" id="buy" ${gold >= pc ? "" : "disabled"}>КУПИТЬ · ${pc} з.</button>
@@ -873,20 +918,20 @@ main.addEventListener("click", e => {
   const ss = e.target.closest("[data-sslot]"), sst = e.target.closest("[data-sstat]");
   if (ss || sst) { if (ss) shopSlot = ss.dataset.sslot; else shopStat = sst.dataset.sstat; renderHero(); return; }
   if (e.target.closest("#buy")) {
-    const cost = G.priceOf(G.PRICE_COMMON, SUM.build), it = G.itemOf(`s:${shopSlot}:${shopStat}:${(S.meta.shop?.log || []).length}`);
+    const cost = G.priceOf(G.PRICE_COMMON, SUM.build, todayISO()), it = G.itemOf(`s:${shopSlot}:${shopStat}:${(S.meta.shop?.log || []).length}`);
     if (confirm(`Купить «${it.name}» за ${cost} золота?`)) { shopAct("buy", it.id, [], cost); toast(`Куплено: ${it.name}`); }
     return;
   }
   const fs = e.target.closest("[data-fsel]");
   if (fs) { const id = fs.dataset.fsel; forgeSel = forgeSel.includes(id) ? forgeSel.filter(x => x !== id) : [...forgeSel, id].slice(0, 2); renderHero(); return; }
   if (e.target.closest("#forge") && forgeSel.length === 2) {
-    const id = forgeId(forgeSel), cost = G.priceOf(G.FORGE_FEE, SUM.build);
+    const id = forgeId(forgeSel), cost = G.priceOf(G.FORGE_FEE, SUM.build, todayISO());
     if (confirm(`Сковать «${G.itemOf(id).name}»? Две вещи уйдут в горн, плата ${cost} золота.`)) { const use = forgeSel; forgeSel = []; shopAct("forge", id, use, cost); toast(`Скована: ${G.itemOf(id).name}`); }
     return;
   }
   const my = e.target.closest("[data-myth]");
   if (my) {
-    const id = "M:" + my.dataset.myth, cost = G.priceOf(G.MYTHIC_COST, SUM.build);
+    const id = "M:" + my.dataset.myth, cost = G.priceOf(G.MYTHIC_COST, SUM.build, todayISO());
     if (confirm(`Пробудить легендарку за ${cost} золота? Она станет «${G.itemOf(id).name}».`)) { shopAct("mythic", id, [my.dataset.myth], cost); toast(`Пробуждена: ${G.itemOf(id).name}`); }
     return;
   }
