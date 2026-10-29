@@ -100,5 +100,13 @@
     "overkill": 170,
     "killed": true
   },
-  "updatedAt": 1793292995491
+  "updatedAt": 1793293006073,
+  "extra": [
+    {
+      "name": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    }
+  ]
 }
