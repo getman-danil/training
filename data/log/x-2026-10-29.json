@@ -3,13 +3,13 @@
   "sortie": true,
   "title": "Вылазка",
   "performedOn": "2026-10-29",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-10-29T17:52:54.139Z",
   "dayNote": "",
   "items": [],
   "extra": [
     {
-      "name": "",
+      "name": "Боковая планка",
       "weight": "",
       "reps": [],
       "note": ""
@@ -19,5 +19,5 @@
     "sortie": true,
     "sets": 0
   },
-  "updatedAt": 1793296355722
+  "updatedAt": 1793296374139
 }
