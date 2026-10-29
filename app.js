@@ -33,11 +33,24 @@ function commit(day, L) {
   L.game = m ? { monster: m.name, hp: b.hp, dealt: b.dealt, overkill: b.over, killed: b.killed, ...(b.replaced ? { replaced: true } : {}) } : { patrol: true };
   // Перенос из тетради: прошедший день по умолчанию считается сделанным в свою дату.
   if (!L.performedOn && (b.setsDone || L.items.some(x => x.done))) L.performedOn = day.on < todayISO() ? day.on : todayISO();
+  // Все подходы стёрты — день снова не сделан, дата «сделал» не должна остаться от случайного тапа.
+  if (isEmptyDay(L, b)) L.performedOn = null;
   const before = SUM?.level, rw = SUM?.unclaimed;
   touchLog(L);
   recompute(); renderTop();
   if (before && SUM.level > before) toast(`Новый уровень: ${SUM.level} · ${SUM.title} · +1 очко характеристики и навыка`);
   else if (rw != null && SUM.unclaimed > rw) toast("Новая награда — забери её в Летописи");
+}
+
+function isEmptyDay(L, b) { return !L.sortie && !L.finished && !L.skipped && !L.replaced && !b.setsDone && !L.items.some(x => x.done); }
+// Старые записи, где дата осталась после случайного тапа, чистим один раз при запуске и после синхронизации.
+function clearEmptyDates() {
+  let n = 0;
+  for (const L of Object.values(S.logs)) {
+    const day = L && G.DAY_BY_DATE[L.date];
+    if (day && L.performedOn && isEmptyDay(L, G.battle(day, L))) { L.performedOn = null; touchLog(L); n++; }
+  }
+  return n;
 }
 
 // Вылазка — тренировка вне плана, своя запись с ключом "x-<дата>".
@@ -180,7 +193,7 @@ function updateStage(animate, info) {
   const found = (loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "") + (pd?.trophy ? `<br>трофей: <span class="legendary">${esc(pd.trophy)}</span>` : "");
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : m.elite ? "ЭЛИТА ПОВЕРЖЕНА" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
-  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
+  else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
   else host.innerHTML = "";
   if (animate && info && info.dmg > 0) {
     const d = $("#dmg"), st = $("#stage");
@@ -702,7 +715,7 @@ function renderHero() {
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
-  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: у торговца на него покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: за сбежавшего — половина от этого, умноженная на долю урона; у торговца на золото покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд и снаряжение действуют на бои с того дня, как ты их поменял.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
@@ -998,7 +1011,7 @@ function renderSettingsMsg() { const m = $("#cfgMsg"); if (m) m.textContent = sy
 // ---------- старт ----------
 // Подсказки названий для своих упражнений: те же имена, что в плане, — тогда рекорды и графики общие.
 document.body.insertAdjacentHTML("beforeend", `<datalist id="exNames">${[...new Set(G.DAYS.flatMap(d => d.items.filter(i => i.type === "ex" && !/^ТЕСТ/i.test(i.name)).map(i => i.name.replace(/\s*\(.*?\)\s*/g, " ").trim())))].sort().map(n => `<option value="${esc(n)}">`).join("")}</datalist>`);
-recompute(); renderTop(); renderSync(); render();
-if (S.cfg.token) runSync().then(() => { recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
+clearEmptyDates(); recompute(); renderTop(); renderSync(); render();
+if (S.cfg.token) runSync().then(() => { clearEmptyDates(); recompute(); renderTop(); if (route().tab !== "settings" && sheet.hidden) render(); });
 else scheduleSync();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

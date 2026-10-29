@@ -510,9 +510,10 @@ export const UNIQUE_FX = {
 };
 
 // ---------- золото, торговец, кузница ----------
-// Золото дают только убийства, то есть только выполненный план. Перебор, рекорды и патрули золота не дают.
+// Золото дают бои: за убийство целиком, за сбежавшего монстра — FLED_GOLD от него, умноженное на долю урона.
+// Перебор, рекорды и патрули золота не дают.
 // meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
-export const GOLD_KILL = 10, GOLD_BOSS = 60;
+export const GOLD_KILL = 10, GOLD_BOSS = 60, FLED_GOLD = 0.5;
 export const PRICE_COMMON = 50, FORGE_FEE = 30, MYTHIC_COST = 800;
 export const isFair = iso => !!iso && FAIR_WEEKS.has(weekOf(iso).n);
 export const priceOf = (base, b, iso) => Math.round(base * (hasPerk(b, "merchant") ? 0.7 : 1) * (isFair(iso) ? 1 - FAIR_DISCOUNT : 1));
@@ -688,10 +689,10 @@ export function summarize(logs, meta, today) {
     });
     let find = 0, dg = 0;
     const when = whenOf(d, L);
+    // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
+    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
     if (b.killed) {
-      // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-      const g = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
-      dg = Math.floor(gold + g) - Math.floor(gold); gold += g;
+      dg = Math.floor(gold + goldFull) - Math.floor(gold); gold += goldFull;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
       if (m?.elite) kx *= ELITE_KILL;
       if (m?.event) kx *= EVENT_KILL;
@@ -703,7 +704,11 @@ export function summarize(logs, meta, today) {
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
       if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
     }
-    else if (L.finished && b.dealt > 0) fled++;
+    else {
+      if (L.finished && b.dealt > 0) fled++;
+      // Сбежавший монстр роняет часть золота по нанесённому урону (решено 29.10): убийство по-прежнему только за 100% плана.
+      if (fledOn(d, L, today)) { const g = goldFull * FLED_GOLD * b.pct; dg = Math.floor(gold + g) - Math.floor(gold); gold += g; }
+    }
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
     const fc = findChances(rawFind(bd, on("luck", when)));
     if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
