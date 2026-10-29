@@ -257,7 +257,7 @@ export function computeRevenge(logs, today, meta = {}) {
   const days = DAYS.filter(d => !isCardio(d) && !isOptional(d)).sort((a, b) => a.on < b.on ? -1 : a.on > b.on ? 1 : 0);
   days.forEach((d, k) => {
     if (BOSS_BY_DATE[d.date] || isTavern(d) || !fledOn(d, logs[d.date], today)) return;
-    const bd = buildAt(meta, whenOf(d, logs[d.date]));
+    const bd = buildAt(meta, whenOf(d, logs[d.date]), fightMs(d, logs[d.date]));
     const prev = REVENGE[d.date];
     if (prev && prev.n >= (hasPerk(bd, "headhunter") ? 2 : 1)) return;   // вернувшийся монстр сбежал снова — больше не придёт
     const next = days.slice(k + 1).find(x => x.on > d.on);
@@ -559,21 +559,31 @@ export function itemText(it) {
 }
 
 const ZERO = () => ({ str: 0, end: 0, agi: 0, wil: 0, lck: 0 });
-function entryAt(log, iso) { let b = null; for (const e of log || []) if (e.at <= iso) b = e; return b; }
+// Билд, снаряжение, титулы и награды действуют на бои ПОСЛЕ изменения (решено 29.10): в тот же день — только на бои,
+// законченные позже. Время изменения — e.t (мс); у старых записей без t — конец их дня, то есть после боёв того дня.
+export function entryMs(e) { return e?.t ?? (e?.at ? new Date(e.at + "T23:59:59").getTime() : -Infinity); }
+const localISO = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+// Момент боя: время «Завершить бой», если бой закончен в день «сделал»; иначе (идёт сейчас или перенесён из тетради) — конец дня.
+export function fightMs(day, L) {
+  const ms = L?.finishedAt ? Date.parse(L.finishedAt) : NaN;
+  return ms && localISO(ms) === whenOf(day, L) ? ms : Infinity;
+}
+const applies = (e, iso, ms) => e.at < iso || (e.at === iso && entryMs(e) < ms);
+function entryAt(log, iso, ms = Infinity) { let b = null; for (const e of log || []) if (applies(e, iso, ms)) b = e; return b; }
 // Вложенное вручную: очки характеристик и взятые узлы.
-export function allocAt(meta, iso) {
-  const e = entryAt(meta?.build?.log, iso);
+export function allocAt(meta, iso, ms) {
+  const e = entryAt(meta?.build?.log, iso, ms);
   return { stats: { ...ZERO(), ...(e?.stats || {}) }, nodes: (e?.nodes || []).filter(n => NODE_BY_ID[n]) };
 }
-export function honorAt(meta, iso) { const id = entryAt(meta?.honor?.log, iso)?.id; return HONOR[id] ? id : ""; }
-export function gearAt(meta, iso) { return { ...(entryAt(meta?.gear?.log, iso)?.eq || {}) }; }
+export function honorAt(meta, iso, ms) { const id = entryAt(meta?.honor?.log, iso, ms)?.id; return HONOR[id] ? id : ""; }
+export function gearAt(meta, iso, ms) { return { ...(entryAt(meta?.gear?.log, iso, ms)?.eq || {}) }; }
 // Итоговый билд на дату: вложенные очки + малые узлы + снаряжение. nodes включает узлы и эффекты легендарных вещей.
-export function buildAt(meta, iso) {
-  const a = allocAt(meta, iso), eq = gearAt(meta, iso);
+export function buildAt(meta, iso, ms) {
+  const a = allocAt(meta, iso, ms), eq = gearAt(meta, iso, ms);
   const stats = { ...a.stats }, nodes = new Set(a.nodes);
   for (const id of Object.values(eq)) { if (!id) continue; const it = itemOf(id); for (const [s, v] of Object.entries(it.stats)) stats[s] += v; it.nodes.forEach(n => nodes.add(n)); }
   for (const n of nodes) if (NODE_BY_ID[n]?.kind === "small") stats[NODE_BY_ID[n].stat]++;
-  const h = honorAt(meta, iso); if (h) nodes.add(HONOR[h].fx);
+  const h = honorAt(meta, iso, ms); if (h) nodes.add(HONOR[h].fx);
   return { stats, nodes: [...nodes], alloc: a, eq };
 }
 export function currentBuild(meta) { return buildAt(meta, "9999-12-31"); }
@@ -656,11 +666,11 @@ export function summarize(logs, meta, today) {
   const tavernBuffWeeks = new Set(), weekFirst = new Set();
   // Награды: заряды Вдохновения расходуются по одному на бой, изученные виды дают бонус с даты, когда их забрали.
   const claims = claimsOf(meta);
-  const buffs = buffWindows(claims), on = (k, iso) => buffs[k].some(w => iso >= w.from && iso < w.to);
-  const studiedAt = (id, iso) => claims.some(e => e.id === "m:" + id && e.at <= iso);
+  const buffs = buffWindows(claims), on = (k, iso, ms = Infinity) => buffs[k].some(w => (iso > w.from || (iso === w.from && w.ms < ms)) && iso < w.to);
+  const studiedAt = (id, iso, ms) => claims.some(e => e.id === "m:" + id && applies(e, iso, ms));
   for (const d of DAYS) {
     const L = logs[d.date]; if (!L) continue;
-    const bd = buildAt(meta, whenOf(d, L)), st = bd.stats;
+    const fms = fightMs(d, L), bd = buildAt(meta, whenOf(d, L), fms), st = bd.stats;
     if (isCardio(d)) {
       if (L.items?.some(x => x.done) || L.finished) {
         const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end + (hasPerk(bd, "u-patrol") ? 0.2 : 0) + (hasPerk(bd, "h-patrol") ? 0.3 : 0)) * (hasPerk(bd, "marathon") ? 1.75 : 1));
@@ -691,7 +701,7 @@ export function summarize(logs, meta, today) {
     let find = 0, dg = 0;
     const when = whenOf(d, L);
     // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when) ? BUFFS.gold.val : 0));
+    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when, fms) ? BUFFS.gold.val : 0));
     if (b.killed) {
       dg = Math.floor(gold + goldFull) - Math.floor(gold); gold += goldFull;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
@@ -711,7 +721,7 @@ export function summarize(logs, meta, today) {
       if (fledOn(d, L, today)) { const g = goldFull * FLED_GOLD * b.pct; dg = Math.floor(gold + g) - Math.floor(gold); gold += g; }
     }
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
-    const fc = findChances(rawFind(bd, on("luck", when)));
+    const fc = findChances(rawFind(bd, on("luck", when, fms)));
     if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
     if (find) { finds++; dx += FIND_XP; loot.push({ id: (hash01(d.date + "#rare") < fc.rare ? "r:" : "c:") + d.date, date: d.date }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
@@ -721,8 +731,8 @@ export function summarize(logs, meta, today) {
     const late = L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= NIGHT_HOUR;
     if (late && hasPerk(bd, "h-night")) mul += 0.2;
     if (hasPerk(bd, "h-year")) mul += 0.02;
-    if (m && studiedAt(m.id, when)) mul += STUDY;
-    const inspired = b.dealt > 0 && on("ins", when);
+    if (m && studiedAt(m.id, when, fms)) mul += STUDY;
+    const inspired = b.dealt > 0 && on("ins", when, fms);
     if (inspired) mul += hasPerk(bd, "u-inspire") ? INSPIRE_U : BUFFS.ins.val;
     dx = Math.round(dx * mul);
     if (late) nightOwl++;
@@ -899,9 +909,10 @@ function buffWindows(claims) {
     let end = "";
     for (const e of [...claims].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))) {
       const n = rewardOf(e.id)[key[k]]; if (!n) continue;
-      const from = e.at > end ? e.at : end; end = addDays(from, n);
+      const fresh = e.at > end, from = fresh ? e.at : end; end = addDays(from, n);
       const last = out[k][out[k].length - 1];
-      if (last && last.to === from) last.to = end; else out[k].push({ from, to: end });
+      // Новый отрезок с дня получения начинается с момента, когда награду забрали; продолжение — с начала дня.
+      if (last && last.to === from) last.to = end; else out[k].push({ from, to: end, ms: fresh ? entryMs(e) : -Infinity });
     }
   }
   return out;
