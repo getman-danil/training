@@ -117,7 +117,7 @@ function stageHTML(day) {
   const cls = m.boss ? "boss" : m.tavern ? "tavern" : m.elite ? "elite" : "";
   const art = m.tavern ? tavernSVG() : `<img src="${m.img}" alt="${esc(m.name)}">${m.placeholder ? '<div class="q">?</div>' : ""}`;
   const rv = G.REVENGE[day.date];
-  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.elite ? "ЭЛИТА" : m.id === "goblin-chief" ? "ВОЖАК" : "";
+  const tag = m.boss ? "БОСС" : m.tavern ? "ТАВЕРНА" : rv ? "РЕВАНШ" : m.elite ? "ЭЛИТА" : m.chief ? "ВОЖАК" : "";
   return `<div class="stage ${cls}" id="stage">
     <div class="fog"></div>
     <i class="ember" style="left:62%"></i><i class="ember" style="left:74%;animation-delay:1.7s"></i><i class="ember" style="left:55%;animation-delay:3.1s"></i>
@@ -405,7 +405,7 @@ function renderJourney() {
     const manual = (S.meta.freezes || []).includes(w.n);
     const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
     h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
-      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
+      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · вылазка в " + esc(G.SWAMP.name.toLowerCase()) : ""}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
       <div class="r">${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
   }
   main.innerHTML = h;
