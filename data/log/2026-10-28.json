@@ -56,7 +56,9 @@
       "planWeight": "16 кг",
       "weight": "16 кг",
       "reps": [
-        12
+        12,
+        10,
+        10
       ],
       "note": ""
     },
@@ -66,7 +68,12 @@
       "plan": "4×10",
       "planWeight": "24 кг двумя руками",
       "weight": "24 кг двумя руками",
-      "reps": [],
+      "reps": [
+        10,
+        10,
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -75,7 +82,9 @@
       "plan": "3×45 с",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        45
+      ],
       "note": ""
     }
   ],
@@ -83,9 +92,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 534,
-    "overkill": 146,
+    "dealt": 870,
+    "overkill": 187,
     "killed": false
   },
-  "updatedAt": 1794242479558
+  "updatedAt": 1794243643603
 }
