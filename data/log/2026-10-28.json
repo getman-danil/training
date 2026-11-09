@@ -43,7 +43,7 @@
       "planWeight": "резинка 15–25",
       "weight": "Без резинки",
       "reps": [
-        7
+        null
       ],
       "note": ""
     },
@@ -79,9 +79,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 424,
+    "dealt": 384,
     "overkill": 112,
     "killed": false
   },
-  "updatedAt": 1794241462875
+  "updatedAt": 1794241474435
 }
