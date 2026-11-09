@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-30",
+  "week": 3,
+  "block": "Блок 1. Возвращение",
+  "title": "В — махи + объём",
+  "performedOn": null,
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Разминка 5–7 мин",
+      "done": false
+    },
+    {
+      "type": "ex",
+      "name": "Махи гирей двумя руками",
+      "plan": "8×10",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга в кольцах (кольца на уровне пояса, ноги согнуты)",
+      "plan": "4×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания от пола",
+      "plan": "4×14",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Выпады назад, гиря у груди",
+      "plan": "3×10 на ногу",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Сгибания рук в кольцах + разгибания на трицепс в кольцах (суперсет)",
+      "plan": "3×12 + 3×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Скакалка — финишер",
+      "plan": "5×1 мин",
+      "planWeight": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "note",
+      "text": "Растяжка задней поверхности бедра",
+      "done": false
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Матёрый гоблин-шаман",
+    "hp": 1584,
+    "dealt": 0,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1794250824463
+}
