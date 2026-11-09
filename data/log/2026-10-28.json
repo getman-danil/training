@@ -18,6 +18,7 @@
         10,
         10,
         8,
+        8,
         8
       ],
       "note": ""
@@ -72,9 +73,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 192,
-    "overkill": 96,
+    "dealt": 240,
+    "overkill": 112,
     "killed": false
   },
-  "updatedAt": 1794240995912
+  "updatedAt": 1794241182556
 }
