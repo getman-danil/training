@@ -41,8 +41,10 @@
       "name": "Подтягивания обратным хватом",
       "plan": "3×10",
       "planWeight": "резинка 15–25",
-      "weight": "резинка 15–25",
-      "reps": [],
+      "weight": "Без резинки",
+      "reps": [
+        9
+      ],
       "note": ""
     },
     {
@@ -77,9 +79,9 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 384,
-    "overkill": 112,
+    "dealt": 432,
+    "overkill": 115,
     "killed": false
   },
-  "updatedAt": 1794241386245
+  "updatedAt": 1794241448310
 }
