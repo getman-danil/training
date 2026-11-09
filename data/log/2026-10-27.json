@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-27",
+  "week": 3,
+  "block": "Блок 1. Возвращение",
+  "title": "Кардио",
+  "performedOn": "2026-11-09",
+  "finished": true,
+  "finishedAt": "2026-11-09T18:05:55.323Z",
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Скакалка 10×(1 мин / 1 мин)",
+      "done": true
+    }
+  ],
+  "game": {
+    "patrol": true
+  },
+  "updatedAt": 1794247555324
+}
