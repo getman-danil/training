@@ -43,9 +43,9 @@
       "planWeight": "резинка 15–25",
       "weight": "Без резинки",
       "reps": [
-        6,
-        6,
-        6
+        9,
+        9,
+        9
       ],
       "note": ""
     },
@@ -94,11 +94,11 @@
   "game": {
     "monster": "Гоблин-лучник",
     "hp": 1008,
-    "dealt": 966,
-    "overkill": 235,
-    "killed": false
+    "dealt": 1008,
+    "overkill": 245,
+    "killed": true
   },
-  "updatedAt": 1794244022686,
+  "updatedAt": 1794244063400,
   "extra": [
     {
       "name": "Скакалка — финишер",
