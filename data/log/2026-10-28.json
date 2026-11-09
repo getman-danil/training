@@ -95,15 +95,19 @@
     "monster": "Гоблин-лучник",
     "hp": 1008,
     "dealt": 1008,
-    "overkill": 389,
+    "overkill": 581,
     "killed": true
   },
-  "updatedAt": 1794245271359,
+  "updatedAt": 1794245635630,
   "extra": [
     {
       "name": "Скакалка — финишер",
       "weight": "",
       "reps": [
+        1,
+        1,
+        2,
+        1,
         1,
         1,
         1,
