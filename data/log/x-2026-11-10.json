@@ -3,8 +3,8 @@
   "sortie": true,
   "title": "Вылазка",
   "performedOn": "2026-11-10",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-11-10T18:34:05.797Z",
   "dayNote": "",
   "items": [],
   "extra": [
@@ -33,6 +33,6 @@
     "sortie": true,
     "sets": 13
   },
-  "updatedAt": 1794335628609,
+  "updatedAt": 1794335645797,
   "skipped": false
 }
