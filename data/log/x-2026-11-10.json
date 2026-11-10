@@ -21,6 +21,9 @@
         1,
         1,
         1,
+        1,
+        1,
+        1,
         1
       ],
       "note": ""
@@ -28,8 +31,8 @@
   ],
   "game": {
     "sortie": true,
-    "sets": 10
+    "sets": 13
   },
-  "updatedAt": 1794335529157,
+  "updatedAt": 1794335628609,
   "skipped": false
 }
