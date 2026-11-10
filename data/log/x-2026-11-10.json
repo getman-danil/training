@@ -1,0 +1,23 @@
+{
+  "date": "x-2026-11-10",
+  "sortie": true,
+  "title": "Вылазка",
+  "performedOn": "2026-11-10",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [],
+  "extra": [
+    {
+      "name": "Скакалка — финишер",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    }
+  ],
+  "game": {
+    "sortie": true,
+    "sets": 0
+  },
+  "updatedAt": 1794335507109
+}
