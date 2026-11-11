@@ -370,3 +370,146 @@ details.more summary{font-family:var(--caps);letter-spacing:.1em;color:var(--dus
 .gbag{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
 .gbag .gsl{width:100%;height:auto;aspect-ratio:1}
 .gbag .gsl svg{width:60%;height:60%}
+
+/* ===== новый облик: значки вкладок, разделы внутри вкладок, шапки подземелий, медали ===== */
+.top{gap:10px}
+.lvl{display:flex;align-items:center;gap:8px}
+.lvl .face{width:40px;height:40px;border:1px solid var(--line2);background:var(--ash);object-fit:cover;display:block}
+.lvl.pts .face{border-color:var(--gold)}
+.lvl.pts::after{top:4px;left:30px;right:auto}
+.cog{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);color:var(--dust);flex:0 0 auto}
+.cog svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round}
+.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:56px;font-size:12px;letter-spacing:.04em;position:relative}
+.tabs a svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.tabs a[aria-current="page"]{color:var(--gold);background:linear-gradient(rgba(201,162,74,.10),transparent 70%)}
+.tabs a.pts::after{top:6px;right:calc(50% - 20px)}
+body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
+
+.subtabs{display:flex;margin:4px -16px 6px;padding:0 8px;border-bottom:1px solid var(--line);position:sticky;top:calc(60px + env(safe-area-inset-top,0px));z-index:15;background:var(--ink)}
+.subtabs a{flex:1 1 auto;text-align:center;padding:11px 4px 10px;font-family:var(--caps);font-size:14px;letter-spacing:.04em;color:var(--mute);text-decoration:none;position:relative;white-space:nowrap}
+.subtabs a[aria-current="page"]{color:var(--bone);box-shadow:inset 0 -2px 0 var(--gold)}
+.subtabs a.pts::after{content:"";position:absolute;top:8px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 8px}
+.chips button{border:1px solid var(--line);color:var(--mute);font-family:var(--caps);font-size:14px;letter-spacing:.05em;padding:5px 10px}
+.chips button small{font-size:11px;color:var(--mute);margin-left:2px}
+.chips button[aria-current="true"]{border-color:var(--gold);color:var(--bone)}
+
+/* поход: блоки-подземелья */
+.blk{margin-top:12px}
+.blk>summary{list-style:none;cursor:pointer}
+.blk>summary::-webkit-details-marker{display:none}
+.ban{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;margin:0 -16px;padding:12px 16px 10px;min-height:76px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background-color:#12110f;background-size:cover;background-position:60% 50%;overflow:hidden}
+.ban::before{content:"";position:absolute;inset:0;pointer-events:none}
+.ban.hasart::before{background:linear-gradient(90deg,rgba(11,10,9,.92),rgba(11,10,9,.45) 55%,rgba(11,10,9,.15))}
+.ban>*{position:relative}
+.ban .m,.ban .m2{font-family:var(--caps);font-size:11.500px;letter-spacing:.16em;color:var(--dust);text-transform:uppercase}
+.ban .m2{letter-spacing:.08em;text-transform:none;font-size:13px;color:var(--mute)}
+.ban .nm{font-family:var(--caps);font-size:22px;letter-spacing:.08em;line-height:1.15;color:var(--bone)}
+.ban .pr{display:block;height:2px;background:rgba(255,255,255,.10);margin-top:6px}
+.ban .pr i{display:block;height:100%;background:var(--gold)}
+.blk[open]>summary.ban{min-height:112px}
+.blk.cur>summary.ban{border-color:#6b5b3a}
+.blk.past>summary.ban .nm{color:var(--dust)}
+.blk>summary.ban::after{content:"+";position:absolute;right:16px;top:10px;font-family:var(--caps);font-size:20px;color:var(--mute)}
+.blk[open]>summary.ban::after{content:"–"}
+/* запасной фон, пока нет пейзажа из Gemini: свой оттенок у каждого подземелья */
+.d-goblin{background-image:radial-gradient(70% 140% at 82% 60%,rgba(120,150,70,.26),transparent 70%)}
+.d-crypt{background-image:radial-gradient(70% 140% at 82% 40%,rgba(90,130,170,.26),transparent 70%)}
+.d-orc{background-image:radial-gradient(70% 140% at 82% 70%,rgba(200,90,30,.28),transparent 70%)}
+.d-dragon{background-image:radial-gradient(70% 140% at 82% 60%,rgba(190,50,30,.28),transparent 70%)}
+.d-throne{background-image:radial-gradient(70% 140% at 82% 50%,rgba(201,162,74,.24),transparent 70%)}
+.d-ash{background-image:radial-gradient(70% 140% at 82% 70%,rgba(150,40,40,.30),transparent 70%)}
+.d-grove{background-image:radial-gradient(70% 140% at 82% 50%,rgba(60,130,90,.26),transparent 70%)}
+.d-labyrinth{background-image:radial-gradient(70% 140% at 82% 50%,rgba(150,120,90,.26),transparent 70%)}
+.d-swamp{background-image:radial-gradient(70% 160% at 82% 50%,rgba(110,150,60,.22),transparent 70%)}
+.wkban{min-height:0;padding:6px 16px;border-bottom:0}
+.wkban .nm{font-size:14px;letter-spacing:.14em;color:var(--dust)}
+.wkban.hasart{min-height:44px}
+.wk.now{margin:0 -16px;padding:8px 16px;background:linear-gradient(90deg,rgba(201,162,74,.12),transparent 70%);box-shadow:inset 2px 0 0 var(--gold)}
+.nowtag{display:block;font-style:normal;font-size:12px;letter-spacing:.1em;color:var(--gold)}
+details.more{border-top:1px solid var(--line);margin-top:10px}
+details.more+details.more{margin-top:0}
+details.more summary{list-style:none;display:flex;justify-content:space-between}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:"+";color:var(--mute)}
+details.more[open] summary::after{content:"–"}
+
+/* характеристики и лавка */
+.sti{display:grid;place-items:center;width:30px;height:30px;color:var(--gold);flex:0 0 auto}
+.sti svg{width:24px;height:24px}
+.stat .row b{flex:1}
+.ttabs.ico button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px 5px}
+.ttabs.ico svg{width:20px;height:20px}
+.ttabs.ico button[aria-current="true"] svg{color:var(--gold)}
+.gsum svg{display:block;width:16px;height:16px;margin:0 auto 1px;color:var(--mute)}
+.npc{position:relative;margin:0 -16px;min-height:96px;padding:16px;border-bottom:1px solid var(--line);background:radial-gradient(60% 120% at 80% 80%,rgba(255,110,30,.16),transparent 70%),linear-gradient(#15120e,var(--ink));overflow:hidden}
+.npc.hasart{min-height:170px}
+.npc img{position:absolute;right:-4px;bottom:0;height:100%;width:auto;max-width:60%;object-fit:contain;object-position:100% 100%}
+.npc .say{position:relative;max-width:100%}
+.npc.hasart .say{max-width:56%}
+.npc .say>b{display:block;font-family:var(--caps);font-weight:500;font-size:24px;letter-spacing:.08em}
+.npc .say span{display:block;font-style:italic;color:var(--dust);font-size:16px}
+.npc .say em{display:block;font-style:normal;margin-top:6px;font-family:var(--caps);letter-spacing:.06em}
+.shopgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+.shopgrid .gsl{width:100%;height:auto;padding:6px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.shopgrid .gsl img,.shopgrid .gsl svg{width:52px;height:52px}
+.shopgrid .gsl span{font-family:var(--caps);font-size:13px;letter-spacing:.04em;color:var(--dust)}
+.shopgrid .gsl[aria-pressed="true"] span{color:var(--bone)}
+.gsl.mini{width:40px;height:40px;flex:0 0 40px;align-self:center}
+.forge li{justify-content:flex-start}
+.forge li span{flex:1}
+
+/* летопись: достижения списком с медалями */
+.achl .a{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.achl .a>div{flex:1;min-width:0}
+.med{flex:0 0 44px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;background:#14120f;color:var(--mute);margin-top:2px}
+.med svg{width:22px;height:22px}
+.achl .got .med{border-color:var(--gold);color:var(--gold);background:radial-gradient(circle at 35% 30%,#6b5320,#1d170b 72%);box-shadow:0 0 10px rgba(201,162,74,.18)}
+.achl .hard .med{border-style:dashed}
+.achl .hard.got .med{border-style:solid;border-color:#5fd0b0;color:#5fd0b0;background:radial-gradient(circle at 35% 30%,#1f5a4c,#0d1b17 72%)}
+.achl b{display:block;font-family:var(--caps);font-weight:500;letter-spacing:.04em;font-size:17px}
+.achl .got b{color:var(--gold)}
+.achl .a>div>span{color:var(--mute);font-style:italic;font-size:15px}
+.achl .a>div>span:first-of-type{display:block}
+.achl .a:not(.got) b{color:var(--dust)}
+.achl .pbar{display:inline-block;vertical-align:middle;width:120px;height:3px;background:var(--line);margin:6px 8px 0 0}
+.achl .pbar i{display:block;height:100%;background:var(--gold)}
+.achl .pn{font-style:normal!important;font-family:var(--caps);font-size:12px!important;letter-spacing:.06em}
+.achl .rw{display:block;margin-top:3px;font-size:13px;color:var(--dust);font-style:italic}
+.achl .rw.got{color:#8a7a52}
+h2.sec.fam{display:flex;justify-content:space-between}
+h2.sec.fam span:last-child{color:var(--mute);letter-spacing:.06em}
+
+/* прогресс и итоги года */
+.hints li b{display:block;font-family:var(--caps);font-weight:500;letter-spacing:.05em;font-size:16px;color:var(--bone)}
+.hints li{padding-right:12px;color:var(--dust)}
+.calscroll{overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:thin}
+.calscroll .chart.cal{width:auto;max-width:none;display:block}
+.chart.cal text{font-size:11px}
+
+/* правила раскрывающимися разделами */
+details.rule{border-top:1px solid var(--line)}
+details.rule summary{list-style:none;cursor:pointer;padding:12px 0;font-family:var(--caps);font-size:17px;letter-spacing:.06em;color:var(--bone);display:flex;justify-content:space-between}
+details.rule summary::-webkit-details-marker{display:none}
+details.rule summary::after{content:"+";color:var(--mute)}
+details.rule[open] summary::after{content:"–"}
+details.rule p{margin:0 0 12px}
+
+/* полоса события над боем */
+.evstrip{display:flex;align-items:center;gap:12px;margin:8px 0 0;padding:6px 12px 6px 6px;border:1px solid var(--line);background:linear-gradient(90deg,rgba(255,255,255,.03),transparent)}
+.evstrip img{width:52px;height:52px;object-fit:contain;flex:0 0 52px}
+.evstrip div{min-width:0}
+.evstrip b{display:block;font-family:var(--caps);font-weight:500;letter-spacing:.08em;font-size:16px}
+.evstrip span{display:block;font-style:italic;color:var(--dust);font-size:14px;line-height:1.25}
+.evstrip.ev-moon{border-color:#5a1a14;background:linear-gradient(90deg,rgba(142,26,18,.20),transparent)}
+.evstrip.ev-moon b{color:#d4534a}
+.evstrip.ev-invasion{border-color:#2e3f4a;background:linear-gradient(90deg,rgba(90,140,180,.14),transparent)}
+.evstrip.ev-invasion b{color:#8fb6d4}
+.evstrip.ev-winter{border-color:#2e3f4a;background:linear-gradient(90deg,rgba(140,190,230,.16),transparent)}
+.evstrip.ev-winter b{color:#a9d0ee}
+.evstrip.ev-fair{border-color:#6b5b3a;background:linear-gradient(90deg,rgba(201,162,74,.14),transparent)}
+.evstrip.ev-fair b{color:var(--gold)}
+.events li{align-items:center;justify-content:flex-start}
+.evico{width:44px;height:44px;object-fit:contain;flex:0 0 44px}
+.ban.hasart .m,.ban.hasart .m2,.ban.hasart .nm{text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8)}

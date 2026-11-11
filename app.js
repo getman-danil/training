@@ -77,6 +77,7 @@ function commitCur(L) { if (cur.sortie) commitSortie(L); else commit(cur.day, L)
 function renderTop() {
   $("#lvl").textContent = SUM.level;
   $("#lvlBtn").classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
+  document.querySelector('.tabs [data-tab="hero"]').classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
   document.querySelector('.tabs [data-tab="chronicle"]').classList.toggle("pts", SUM.unclaimed > 0);
   $("#xpTxt").textContent = `${SUM.shownTitle} · ${SUM.into} / ${SUM.need}`;
   $("#xpBar").style.width = (SUM.into / SUM.need * 100).toFixed(1) + "%";
@@ -93,6 +94,28 @@ $("#lvlBtn").onclick = () => { location.hash = "#/hero"; };
 
 let toastT;
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+
+// ---------- разделы внутри вкладок и значки ----------
+// Разделы «Героя» и «Летописи»: #/hero/<раздел>, #/chronicle/<раздел>.
+const HERO_SUBS = [["hero", "Герой"], ["gear", "Снаряжение"], ["shop", "Лавка"], ["rules", "Правила"]];
+const CHRON_SUBS = [["ach", "Достижения"], ["beasts", "Бестиарий"], ["trophies", "Трофеи"], ["titles", "Титулы"]];
+const subOf = (subs) => subs.some(x => x[0] === route().arg) ? route().arg : subs[0][0];
+const subnav = (base, subs, cur, dots = {}) => `<nav class="subtabs">${subs.map(([id, name]) => `<a href="#/${base}/${id}" ${id === cur ? 'aria-current="page"' : ""} class="${dots[id] ? "pts" : ""}">${name}</a>`).join("")}</nav>`;
+const svg = d => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+// Значки характеристик: гантель, сердце, молния, факел, клевер.
+const STAT_ICON = {
+  str: '<path d="M3 9v6M6 6.500v11M18 6.500v11M21 9v6M6 12h12"/>',
+  end: '<path d="M12 20S4 15 4 9.500A4 4 0 0112 7.500 4 4 0 0120 9.500C20 15 12 20 12 20z"/><path d="M7 12h3l1.500-2.500 2 4.500 1.500-2H17"/>',
+  agi: '<path d="M13 2L5 13.500h6L10 22l9-12.500h-6z"/>',
+  wil: '<path d="M12 12c-2.500 0-4-1.800-4-4 0-2.500 2.500-3.500 3-6 2.500 1.500 5 3.500 5 6.500 0 2-1.500 3.500-4 3.500zM9.500 12h5l-1 3h-3zM10.500 15l.500 7h2l.500-7"/>',
+  lck: '<circle cx="8.500" cy="8.500" r="3.200"/><circle cx="15.500" cy="8.500" r="3.200"/><circle cx="8.500" cy="15.500" r="3.200"/><circle cx="15.500" cy="15.500" r="3.200"/><path d="M12 12l7 9"/>',
+};
+const statIcon = id => svg(STAT_ICON[id]);
+const STAT_SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
+// Картинки из Gemini, которые уже лежат в assets/art (имя без .webp): пейзажи подземелий dungeon-<ключ>,
+// персонажи npc-merchant и npc-smith, значки событий event-<moon|fair|winter|undead>. Пока картинки нет — рисуется запасной фон.
+const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead"]);
+const art = name => ART.has(name) ? `assets/art/${name}.webp` : "";
 
 // ---------- маршруты ----------
 function route() {
@@ -144,9 +167,25 @@ function renderBattle(date) {
   const loc = `${G.locationFor(day).toUpperCase()} · НЕДЕЛЯ ${day.week}${ev.length ? " · " + ev.join(", ").toUpperCase() : ""}`;
   let html = `<div class="loc">${esc(loc)}</div>
   <div class="daynav"><button class="arr" data-wk="${wi - 1}" ${wi === 0 ? "disabled" : ""} aria-label="Прошлая неделя">‹</button><div class="days">${days}</div><button class="arr" data-wk="${wi + 1}" ${wi === G.WEEKS.length - 1 ? "disabled" : ""} aria-label="Следующая неделя">›</button></div>`;
+  html += eventStrip(day);
   html += G.isCardio(day) ? cardioHTML(day, L) : stageHTML(day) + exercisesHTML(day);
   main.innerHTML = html;
   if (!G.isCardio(day)) updateStage(false);
+}
+
+// Полоса события над боем: значок и что оно даёт в этот день.
+const EVENT_ICON = { invasion: "event-undead", winter: "event-winter", moon: "event-moon", fair: "event-fair" };
+function dayEvents(day) {
+  const out = [], ev = G.EVENT_BY_DATE[day.date]?.ev;
+  if (ev) out.push(ev);
+  if (G.isMoon(day)) out.push("moon");
+  if (G.isSession(day) && !out.includes("invasion")) out.push("invasion");
+  if (G.FAIR_WEEKS.has(day.week)) out.push("fair");
+  return out;
+}
+function eventStrip(day) {
+  return dayEvents(day).map(id => { const e = G.EVENTS.find(x => x.id === id), img = art(EVENT_ICON[id]);
+    return `<div class="evstrip ev-${id}">${img ? `<img src="${img}" alt="">` : ""}<div><b>${esc(e.name)}</b><span>${esc(e.desc)}</span></div></div>`; }).join("");
 }
 
 function stageHTML(day) {
@@ -618,37 +657,62 @@ $("#sheetOk").onclick = () => {
 // =====================================================================
 // ПОХОД
 // =====================================================================
+// Картинка и запасной цвет подземелья по номеру блока; болото — отдельная полоса над своими неделями.
+const DUNGEON_ART = { 1: "goblin", 2: "crypt", 3: "orc", 4: "dragon", 5: "throne", 6: "ash", 7: "crypt", 8: "grove", 9: "labyrinth", 10: "throne" };
+const banStyle = key => art("dungeon-" + key) ? ` style="background-image:url(${art("dungeon-" + key)})"` : "";
+let openBlk = null;
 function renderJourney() {
   const t = todayISO(), sk = SUM.streak, left = Math.max(0, G.freezeLimit(S.meta) - (S.meta.freezes || []).length);
   const bar = sk.weeks.map(w => `<i class="${w.status} ${w.tavern ? "tavern" : ""}" title="Неделя ${w.n}"></i>`).join("");
-  let h = `<p class="lead">Поход</p><p class="sub">${G.WEEKS.length} недель · ${fmt(G.WEEKS[0].onFrom)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].onTo)}.${G.WEEKS[G.WEEKS.length - 1].onTo.slice(0, 4)}</p>
+  const nowW = sk.weeks.find(w => w.status === "now");
+  let h = `<p class="lead">Поход</p><p class="sub">${nowW ? `Неделя ${nowW.n} из ${G.WEEKS.length}` : `${G.WEEKS.length} недель`} · ${fmt(G.WEEKS[0].onFrom)} — ${fmt(G.WEEKS[G.WEEKS.length - 1].onTo)}.${G.WEEKS[G.WEEKS.length - 1].onTo.slice(0, 4)}</p>
   <div class="weeksbar" style="--n:${G.WEEKS.length}">${bar}</div>
   <div class="legend"><span style="--c:var(--gold)">выполнена</span><span style="--c:#3e5566">заморозка</span><span style="--c:#3a1410">пропуск</span><span style="--c:rgba(255,170,60,.7)">таверна</span></div>
   <div class="stats"><div><b>${sk.cur}</b><span>серия</span></div><div><b>${sk.best}</b><span>лучшая</span></div><div><b>${left}</b><span>заморозок</span></div></div>
-  <p class="hint" style="text-align:left;margin-top:8px">Неделя засчитана, если все обязательные бои проведены. Таверна (разгрузка) серию не рвёт. Заморозка — на экзамен или болезнь.</p>`;
+  <details class="more"><summary>как считается серия</summary><p class="hint" style="text-align:left">Неделя засчитана, если все обязательные бои проведены. Таверна (разгрузка) серию не рвёт. Заморозка — на экзамен или болезнь.</p></details>`;
   const shifts = S.meta.shifts || [];
-  if (shifts.length) h += `<h2 class="sec">ПЕРЕНОСЫ</h2><ul class="list">${shifts.map((x, k) => `<li><span>${esc(G.DAY_BY_DATE[x.at]?.title || x.at)} (${fmt(x.at)}) · ${x.days > 0 ? "+" : ""}${x.days} дн. ${x.scope === "all" ? "и весь план после" : "только она"}</span><span><button class="ghostbtn" data-unshift="${k}" style="border:1px solid var(--line2);padding:2px 8px;font-family:var(--caps);letter-spacing:.1em;font-size:13px">отменить</button></span></li>`).join("")}</ul>`;
+  if (shifts.length) h += `<details class="more"><summary>переносы: ${shifts.length}</summary><ul class="list">${shifts.map((x, k) => `<li><span>${esc(G.DAY_BY_DATE[x.at]?.title || x.at)} (${fmt(x.at)}) · ${x.days > 0 ? "+" : ""}${x.days} дн. ${x.scope === "all" ? "и весь план после" : "только она"}</span><span><button class="ghostbtn" data-unshift="${k}" style="border:1px solid var(--line2);padding:2px 8px;font-family:var(--caps);letter-spacing:.1em;font-size:13px">отменить</button></span></li>`).join("")}</ul></details>`;
   const srt = G.sorties(S.logs);
-  h += `<h2 class="sec">ВЫЛАЗКИ ВНЕ ПЛАНА</h2>${srt.length ? `<ul class="list">${srt.slice().reverse().map(L => `<li><span><a href="#/sortie/${esc(L.date)}">${fmt(G.sortieDate(L))} · ${esc(L.title || "Вылазка")}</a></span><span>${G.customSets(L)} подх.${SUM.perDay[L.date]?.xp ? ` · +${SUM.perDay[L.date].xp}` : ""}</span></li>`).join("")}</ul>` : ""}
-  <button class="act" id="sNew">+ НОВАЯ ВЫЛАЗКА</button><p class="hint">Тренировка не из плана: опыт за подходы (не больше ${G.SORTIE_XP_MAX} в день), рекорды. Заменить или дополнить тренировку дня — внизу её экрана.</p>`;
-  let lastBlock = null;
+  if (srt.length) h += `<details class="more"><summary>вылазки вне плана: ${srt.length}</summary><ul class="list">${srt.slice().reverse().map(L => `<li><span><a href="#/sortie/${esc(L.date)}">${fmt(G.sortieDate(L))} · ${esc(L.title || "Вылазка")}</a></span><span>${G.customSets(L)} подх.${SUM.perDay[L.date]?.xp ? ` · +${SUM.perDay[L.date].xp}` : ""}</span></li>`).join("")}</ul></details>`;
+  h += `<button class="act" id="sNew" style="margin-top:10px">+ НОВАЯ ВЫЛАЗКА</button><p class="hint">Тренировка не из плана: опыт за подходы (не больше ${G.SORTIE_XP_MAX} в день), рекорды. Заменить или дополнить тренировку дня — внизу её экрана.</p>`;
+  // Блоки — подземелья: шапка с пейзажем и полоской пройденных недель, раскрыт текущий.
+  const blocks = [];
   for (const w of G.WEEKS) {
     const bn = +(/Блок (\d+)/.exec(w.block) || [0, 0])[1];
-    if (bn !== lastBlock) { lastBlock = bn; h += `<h2 class="sec">${esc(w.block.toUpperCase())} · ${esc(G.dungeon(bn).name.toUpperCase())}</h2>`; }
-    const st = sk.weeks.find(x => x.n === w.n);
-    const mons = w.days.map(d => {
-      const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
-      const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : `<img src="assets/monsters/patrol.webp" alt="">`;
-      return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${m?.elite ? "elite" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
-    }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
-    const manual = (S.meta.freezes || []).includes(w.n);
-    const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
-    h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
-      <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.SWAMP_WEEKS.has(w.n) ? " · " + esc(G.SWAMP.name) : ""}${G.weekEvents(w).map(e => ` · <span class="evt">${esc(e)}</span>`).join("")}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
-      <div class="r">${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
+    if (blocks[blocks.length - 1]?.bn !== bn) blocks.push({ bn, title: w.block, weeks: [] });
+    blocks[blocks.length - 1].weeks.push(w);
+  }
+  const stOf = w => sk.weeks.find(x => x.n === w.n);
+  const curBn = (blocks.find(b => b.weeks.some(w => stOf(w).status === "now")) || blocks.find(b => b.weeks.some(w => stOf(w).status === "future")) || blocks[blocks.length - 1]).bn;
+  if (!openBlk) openBlk = new Set([curBn]);
+  for (const b of blocks) {
+    const done = b.weeks.filter(w => ["ok", "frozen"].includes(stOf(w).status)).length, key = DUNGEON_ART[b.bn] || "goblin";
+    const past = b.weeks.every(w => !["now", "future"].includes(stOf(w).status));
+    h += `<details class="blk ${b.bn === curBn ? "cur" : ""} ${past ? "past" : ""}" data-blk="${b.bn}" ${openBlk.has(b.bn) ? "open" : ""}><summary class="ban d-${key} ${art("dungeon-" + key) ? "hasart" : ""}"${banStyle(key)}>
+      <span class="m">${esc(b.title.replace(/^Блок (\d+)\.\s*/, "Блок $1 · "))}</span><span class="nm">${esc(G.dungeon(b.bn).name)}</span>
+      <span class="m2">${fmt(b.weeks[0].onFrom)} — ${fmt(b.weeks[b.weeks.length - 1].onTo)} · недель пройдено: ${done} из ${b.weeks.length}</span><span class="pr"><i style="width:${done / b.weeks.length * 100}%"></i></span></summary>`;
+    for (const w of b.weeks) {
+      const st = stOf(w);
+      const mons = w.days.map(d => {
+        const day = G.DAY_BY_DATE[d.date], m = G.monsterFor(day), s = dayState(day);
+        const inner = m ? (m.img ? `<img src="${m.img}" alt="">` : "🍺") : `<img src="assets/monsters/patrol.webp" alt="">`;
+        return `<button class="mon ${m ? "" : "patrol"} ${s} ${m?.placeholder && m.img ? "ph" : ""} ${m?.elite ? "elite" : ""} ${d.on === t ? "today" : ""}" data-go="${d.date}" title="${esc(d.title)}${m ? " · " + esc(m.name) : " · патруль"}">${inner}</button>`;
+      }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
+      const manual = (S.meta.freezes || []).includes(w.n), swamp = G.SWAMP_WEEKS.has(w.n);
+      const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
+      if (swamp) h += `<div class="wkban ban d-swamp ${art("dungeon-swamp") ? "hasart" : ""}"${banStyle("swamp")}><span class="nm">${esc(G.SWAMP.name)}</span></div>`;
+      h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
+        <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.weekEvents(w).map(e => ` · <span class="evt">${esc(e)}</span>`).join("")}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
+        <div class="r">${st.status === "now" ? '<em class="nowtag">сейчас</em>' : ""}${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
+    }
+    h += `</details>`;
   }
   main.innerHTML = h;
 }
+main.addEventListener("toggle", e => {
+  const d = e.target.closest?.("details[data-blk]");
+  if (d && openBlk) { if (d.open) openBlk.add(+d.dataset.blk); else openBlk.delete(+d.dataset.blk); }
+}, true);
 main.addEventListener("click", e => {
   if (e.target.closest("#sNew")) { location.hash = "#/sortie/" + newSortie(todayISO()); return; }
   const u = e.target.closest("[data-unshift]");
@@ -667,8 +731,9 @@ function renderProgress() {
   const t = todayISO(), series = exerciseSeries(S.logs), wk = weekly(S.logs, t), hs = hints(S.logs, t);
   if (!chosenEx || !series.find(s => s.key === chosenEx)) chosenEx = (series.find(s => /подтягив/.test(s.key)) || series[0])?.key;
   const s = series.find(x => x.key === chosenEx);
+  const prs = SUM.prList.slice().reverse(), prLi = p => `<li><span>${fmt(p.date)} · ${esc(p.name)}</span><span>${esc(p.text)}</span></li>`;
   let h = `<p class="lead">Прогресс</p><p class="sub">Считается прямо на телефоне, без интернета.</p>
-  <h2 class="sec">ПОДСКАЗКИ</h2><ul class="list hints">${hs.map(x => `<li class="${x.level}">${esc(x.text)}</li>`).join("") || '<li>Пока всё ровно — замечаний нет.</li>'}</ul>
+  <h2 class="sec">ПОДСКАЗКИ</h2><ul class="list hints">${hs.map(x => { const k = x.text.indexOf(": "); return `<li class="${x.level}">${k > 0 && k < 60 ? `<b>${esc(x.text.slice(0, k))}</b>${esc(x.text.slice(k + 2, k + 3).toUpperCase() + x.text.slice(k + 3))}` : esc(x.text)}</li>`; }).join("") || '<li>Пока всё ровно — замечаний нет.</li>'}</ul>
   <h2 class="sec">ВЫПОЛНЕНИЕ ПЛАНА ПО НЕДЕЛЯМ</h2>${barChart(wk)}
   <h2 class="sec">УПРАЖНЕНИЕ</h2>`;
   if (s) {
@@ -677,7 +742,8 @@ function renderProgress() {
     ${s.points.some(p => p.kg) ? lineChart(s.points.map(p => ({ x: fmt(p.date), y: p.kg })), "вес, кг", "#c9a24a") : ""}
     <ul class="list">${s.points.slice(-8).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.weight || "свой вес")}</span><span>${p.sets} подх., лучш. ${p.best}, всего ${p.total}${p.planPct != null ? ` · ${Math.round(p.planPct * 100)}%` : ""}</span></li>`).join("")}</ul>`;
   } else h += `<p class="hint">Здесь появятся графики после первых записей.</p>`;
-  h += `<h2 class="sec">ЛИЧНЫЕ РЕКОРДЫ</h2><ul class="list">${SUM.prList.slice(-12).reverse().map(p => `<li><span>${fmt(p.date)} · ${esc(p.name)}</span><span>${esc(p.text)}</span></li>`).join("") || "<li><span>Пока нет — первый крит впереди.</span></li>"}</ul>`;
+  h += `<h2 class="sec">ЛИЧНЫЕ РЕКОРДЫ</h2><ul class="list">${prs.slice(0, 5).map(prLi).join("") || "<li><span>Пока нет — первый крит впереди.</span></li>"}</ul>
+  ${prs.length > 5 ? `<details class="more"><summary>все рекорды: ${prs.length}</summary><ul class="list">${prs.slice(5).map(prLi).join("")}</ul></details>` : ""}`;
   h += `<a class="act yearbtn" href="#/progress/year">ИТОГИ ГОДА</a>`;
   main.innerHTML = h;
   $("#exSel")?.addEventListener("change", e => { chosenEx = e.target.value; renderProgress(); });
@@ -703,21 +769,24 @@ function renderYear() {
   <h2 class="sec">БОЛЬШИЕ ПОБЕДЫ</h2><ul class="list">${y.big.map(b => `<li><span>${fmt(b.date)} · ${esc(b.name)}</span><span>+${b.xp} опыта</span></li>`).join("") || "<li><span>Первый вожак — Грызь, 13.11.</span></li>"}</ul>
   <h2 class="sec">УБИТО ПО СЕМЬЯМ</h2><ul class="list">${y.families.map(f => `<li><span>${esc(f.name)}</span><span>${f.n}</span></li>`).join("") || "<li><span>Пока никого.</span></li>"}</ul>`;
   main.innerHTML = h;
+  // Сегодняшняя клетка календаря — в середине видимой части.
+  const sc = $("#calScroll"), td = sc?.querySelector("[data-today]");
+  if (td) sc.scrollLeft = Math.max(0, +td.getAttribute("x") - sc.clientWidth / 2);
 }
 // Календарь: столбец — неделя плана, строка — день недели (пн сверху).
 function yearCalendar(cal, t) {
-  const start = G.WEEKS[0].onFrom, n = G.WEEKS.length, C = 8, W = n * C, H = 7 * C + 12;
+  const start = G.WEEKS[0].onFrom, n = G.WEEKS.length, C = 16, W = n * C, H = 7 * C + 16;
   const color = { kill: "#c9a24a", fled: "#8e1a12", cardio: "#6b5b3a", skip: "#3a3630", plan: "#1c1a17" };
   let cells = "";
   for (let k = 0; k < n * 7; k++) {
     const iso = G.addDays(start, k), st = cal[iso];
     if (!st) continue;
     const col = Math.floor(k / 7), row = k % 7;
-    cells += `<rect x="${col * C}" y="${row * C}" width="${C - 1}" height="${C - 1}" fill="${color[st]}" ${st === "plan" && iso < t ? 'stroke="#3a1410"' : ""}><title>${fmt(iso)}</title></rect>`;
+    cells += `<rect x="${col * C}" y="${row * C}" width="${C - 2}" height="${C - 2}" fill="${color[st]}" ${st === "plan" && iso < t ? 'stroke="#3a1410"' : ""} ${iso === t ? 'stroke="#efe8d6" data-today="1"' : ""}><title>${fmt(iso)}</title></rect>`;
   }
   const months = [];
   for (let col = 0; col < n; col++) { const iso = G.addDays(start, col * 7); if (col === 0 || iso.slice(8, 10) <= "07") months.push(`<text x="${col * C}" y="${H - 1}">${["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][+iso.slice(5, 7) - 1]}</text>`); }
-  return `<svg class="chart cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="Календарь тренировок">${cells}${months.join("")}</svg>`;
+  return `<div class="calscroll" id="calScroll"><svg class="chart cal" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Календарь тренировок">${cells}${months.join("")}</svg></div>`;
 }
 
 function lineChart(pts, label, color = "#efe8d6") {
@@ -753,12 +822,19 @@ function barChart(wk) {
 // ГЕРОЙ
 // =====================================================================
 function renderHero() {
-  const s = SUM;
-  let h = `<p class="lead">${esc(s.shownTitle)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}. Золото: <b class="gold">${s.gold}</b>.${buffsText(s)}${s.unclaimed ? ` <a href="#/chronicle" class="gold">Награды ждут в Летописи: ${s.unclaimed}</a>.` : ""}</p>
+  const s = SUM, sub = subOf(HERO_SUBS);
+  let h = subnav("hero", HERO_SUBS, sub, { hero: s.free > 0 || s.skillFree > 0 });
+  if (sub === "gear") { main.innerHTML = h + gearHTML(s); return; }
+  if (sub === "shop") { main.innerHTML = h + shopHTML(s); return; }
+  if (sub === "hero") {
+    h += `<p class="lead">${esc(s.shownTitle)} · ур. ${s.level}</p><p class="sub">Всего опыта: ${s.xp}. До следующего уровня: ${s.need - s.into}. Золото: <b class="gold">${s.gold}</b>.${buffsText(s)}${s.unclaimed ? ` <a href="#/chronicle" class="gold">Награды ждут в Летописи: ${s.unclaimed}</a>.` : ""}</p>
   <div class="stats"><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.fled}</b><span>сбежало</span></div><div><b>${s.prList.length}</b><span>рекордов</span></div>
   <div><b>${s.streak.cur}</b><span>серия недель</span></div><div><b>${s.cardio}</b><span>патрулей</span></div><div><b>${s.achievements.filter(a => a.got).length}/${s.achievements.length}</b><span>достижений</span></div></div>
-  ${buildHTML(s)}
-  <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
+  ${buildHTML(s)}`;
+    main.innerHTML = h; return;
+  }
+  h += `<p class="lead">Правила</p>
+  <p class="sub">Как качается герой. Нажми на раздел, чтобы раскрыть.</p><div class="help rules">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
   <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. У героя 9 слотов: 4 главных (оружие, броня, амулет, кольцо) и 5 малых (шлем, плащ, сапоги, щит, перчатки). Боссы роняют вещи только в главные слоты. Вещь малого слота всегда даёт +1 к характеристике и принадлежит семье монстров: 2 вещи одной семьи — +${G.SET2_XP * 100}% опыта в боях с ней, 4 — ещё +${G.SET4_XP * 100}% опыта, +${G.SET4_GOLD * 100}% золота и +${G.SET4_FIND * 100}% к находке. Редкую вещь малого слота кузнец улучшает до малой легендарки. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: за сбежавшего — половина от этого, умноженная на долю урона; у торговца на золото покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд, снаряжение и почётный титул действуют на бои, законченные после того, как ты их поменял: на уже проведённые не влияют.</p>
@@ -771,44 +847,74 @@ function renderHero() {
   <p>За достижения, новые титулы и первое убийство каждого вида монстров дают награды — их забирают в Летописи. Бафы действуют несколько дней с момента, как награду забрали: ${Object.values(G.BUFFS).map(b => `${b.name} — ${b.desc}`).join(", ")}. Тот же баф ещё раз продлевает срок. Часть достижений вместо награды даёт почётный титул: его эффект работает, пока титул надет, носить можно один. Изученный вид монстров даёт +${Math.round(G.STUDY * 100)}% опыта в боях с ним. За самые трудные достижения и титул «Легенда» — уникальные вещи: +1 к характеристике и два особых эффекта. Всё действует на бои после того, как награду забрали, — прошлые бои не пересчитываются.</p></div>
   <p style="margin:24px 0"><a href="#/settings" class="act" style="display:grid;place-items:center;text-decoration:none;color:var(--bone)">НАСТРОЙКИ И СОХРАНЕНИЕ</a></p>`;
   main.innerHTML = h;
+  // Правила — раскрывающимися разделами: заголовок по порядку абзацев.
+  const heads = ["Здоровье монстра и убийство", "Уровень монстров", "Очки, вещи и золото", "Перевыполнение и криты", "Если вес не как в плане", "Реванш", "Элита", "События", "Подземелья, боссы, таверна", "Награды и бафы"];
+  main.querySelectorAll(".help > p").forEach((el, i) => { const d = document.createElement("details"); d.className = "rule"; d.innerHTML = `<summary>${heads[i] || "Ещё"}</summary>`; el.replaceWith(d); d.append(el); });
 }
 
 // =====================================================================
 // ЛЕТОПИСЬ: достижения, бестиарий, титулы
 // =====================================================================
+// Медали достижений: значок по типу достижения.
+const ACH_KIND = { hunt: "Охота", boss: "Боссы", dungeon: "Подземелья", streak: "Серии", record: "Рекорды", hero: "Герой" };
+const ACH_ICON = {
+  hunt: '<path d="M6 14a6.500 6.500 0 1112 0v3h-2.500v2.500h-2V17h-3v2.500h-2V17H6zM9.500 11.500v.500M14.500 11.500v.500"/>',
+  boss: '<path d="M4 18h16M4.500 18L3 7l5 4 4-7 4 7 5-4-1.500 11"/>',
+  dungeon: '<path d="M4 21V9l3-2V4h2v2h2V4h2v2h2V4h2v3l3 2v12zM10 21v-5a2 2 0 014 0v5"/>',
+  streak: '<path d="M12 21c-4 0-6-3-6-6 0-4 4-5 4-10 3 2 3 5 3 6 1-.500 2-2 2-3 2 2 3 4 3 7 0 3-2 6-6 6z"/>',
+  record: '<path d="M12 3l2.500 6.500L21 10l-5 4.500L17.500 21 12 17.500 6.500 21 8 14.500 3 10l6.500-.500z"/>',
+  hero: '<path d="M5 20v-9a7 7 0 0114 0v9h-5v-6h-4v6zM5 12h5M14 12h5M12 4V2"/>',
+};
+const achKind = id => /^(boss|chief-|lich|frost)/.test(id) ? "boss" : /^d\d/.test(id) ? "dungeon" : /^(streak|session|cardio|night)/.test(id) ? "streak" : /^(crit|overkill|revenge)/.test(id) ? "record" : /^(lvl|perk|legend|find|buy|forge|mythic)/.test(id) ? "hero" : "hunt";
+let achFilter = "all";
 function renderChronicle() {
-  const s = SUM, rw = Object.fromEntries(s.rewards.map(r => [r.id, r]));
+  const s = SUM, rw = Object.fromEntries(s.rewards.map(r => [r.id, r])), sub = subOf(CHRON_SUBS);
   // Состояние награды: забрана, ждёт или ещё закрыта.
   const tag = r => !r ? "" : r.at ? `<em class="rw got">${esc(r.text)} · получено</em>` : r.open ? `<button class="claim" data-claim="${r.id}">забрать: ${esc(r.text)}</button>` : `<em class="rw">награда: ${esc(r.text)}</em>`;
-  const ready = s.rewards.filter(r => r.open && !r.at);
-  let h = `<p class="lead">Летопись</p><p class="sub">Достижений: ${s.achievements.filter(a => a.got).length} из ${s.achievements.length} · убито монстров: ${s.kills}.${buffsText(s)}</p>`;
+  const ready = s.rewards.filter(r => r.open && !r.at), rdy = p => ready.some(r => r.id.startsWith(p));
+  let h = subnav("chronicle", CHRON_SUBS, sub, { ach: rdy("a:"), beasts: rdy("m:"), titles: rdy("t:") });
+  h += `<p class="sub">Достижений: ${s.achievements.filter(a => a.got).length} из ${s.achievements.length} · убито монстров: ${s.kills}.${buffsText(s)}</p>`;
   if (ready.length) h += `<h2 class="sec">НАГРАДЫ ЖДУТ</h2><ul class="list rewards">${ready.map(r => `<li><span><b>${esc(r.name)}</b><small>${esc(r.text)}</small></span><button class="ghostbtn" data-claim="${r.id}">забрать</button></li>`).join("")}</ul>
   ${ready.length > 1 ? `<button class="act gold" id="claimAll">ЗАБРАТЬ ВСЁ · ${ready.length}</button>` : ""}`;
-  h += `<h2 class="sec">ДОСТИЖЕНИЯ</h2><div class="ach">${s.achievements.map(a => `<div class="${a.got ? "got" : ""} ${rw["a:" + a.id]?.reward.item ? "hard" : ""}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span>${tag(rw["a:" + a.id])}</div>`).join("")}</div>
-  <h2 class="sec">БЕСТИАРИЙ</h2><p class="sub">Первое убийство открывает вид. Забери запись — и бои с ним дают +${Math.round(G.STUDY * 100)}% опыта.</p><div class="beasts">`;
-  for (const m of Object.values(G.MONSTERS)) {
-    if (m.tavern) continue;
-    const k = s.killed[m.id] || 0, r = rw["m:" + m.id];
-    const st = r?.at ? "изучен" : k ? `<button class="claim" data-claim="${r.id}">изучить</button>` : "";
-    h += `<div class="beast ${k ? "" : "unseen"} ${r?.at ? "studied" : ""}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span>${st ? `<span class="st">${st}</span>` : ""}</div>`;
-  }
-  // Элита: отдельная строка бестиария на каждый вид, трофей — просто в коллекцию.
-  h += `</div><h2 class="sec">ЭЛИТА И ТРОФЕИ</h2><p class="sub">Иногда монстр приходит матёрым: на уровень выше, ×${G.ELITE_KILL} опыта за убийство, ×${G.ELITE_GOLD} золота и трофей. Убито элиты: ${s.eliteKills}.</p><div class="beasts">`;
-  for (const id of G.ELITE_SPECIES) {
-    const m = G.eliteOf(G.MONSTERS[id]), k = s.eliteKilled[id] || 0;
-    h += `<div class="beast elite ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : "не встречен"}</span>${k ? `<span class="st">${esc(m.trophy)}</span>` : ""}</div>`;
-  }
-  // События года: что и когда, боссы событий и их трофеи.
-  h += `</div><h2 class="sec">СОБЫТИЯ ГОДА</h2><ul class="list titles events">${G.EVENTS.map(e => `<li><span><b>${esc(e.name)}</b><small>${esc(e.desc)}</small></span></li>`).join("")}
+  if (sub === "ach") {
+    const all = s.achievements.map(a => ({ ...a, kind: achKind(a.id) }));
+    const list = all.filter(a => achFilter === "all" || a.kind === achFilter);
+    // Сначала полученные, потом те, что ближе всего к цели, потом остальные по порядку плана.
+    const near = a => a.p ? a.p[0] / a.p[1] : 0;
+    const sorted = [...list.filter(a => a.got), ...list.filter(a => !a.got && near(a) > 0).sort((a, b) => near(b) - near(a)), ...list.filter(a => !a.got && !near(a))];
+    h += `<div class="chips">${[["all", "Все"], ...Object.entries(ACH_KIND)].map(([k, n]) => { const of = all.filter(a => k === "all" || a.kind === k); return `<button data-achf="${k}" aria-current="${achFilter === k}">${n} <small>${of.filter(a => a.got).length}/${of.length}</small></button>`; }).join("")}</div>
+    <div class="achl">${sorted.map(a => `<div class="a ${a.got ? "got" : ""} ${rw["a:" + a.id]?.reward.item ? "hard" : ""}"><i class="med">${svg(ACH_ICON[a.kind])}</i><div><b>${esc(a.name)}</b><span>${esc(a.desc)}</span>${a.p && !a.got ? `<span class="pbar"><i style="width:${a.p[0] / a.p[1] * 100}%"></i></span><span class="pn">${a.p[0]} из ${a.p[1]}</span>` : ""}${tag(rw["a:" + a.id])}</div></div>`).join("")}</div>`;
+  } else if (sub === "beasts") {
+    h += `<p class="sub">Первое убийство открывает вид. Забери запись — и бои с ним дают +${Math.round(G.STUDY * 100)}% опыта.</p>`;
+    const card = m => {
+      const k = s.killed[m.id] || 0, r = rw["m:" + m.id];
+      const st = r?.at ? "изучен" : k ? `<button class="claim" data-claim="${r.id}">изучить</button>` : "";
+      return `<div class="beast ${k ? "" : "unseen"} ${r?.at ? "studied" : ""}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k || !m.placeholder ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : m.boss ? "босс" : "не встречен"}</span>${st ? `<span class="st">${st}</span>` : ""}</div>`;
+    };
+    // По семьям, боссы тестов и событий — отдельным рядом в конце.
+    const ms = Object.values(G.MONSTERS).filter(m => !m.tavern), isBoss = m => m.id.startsWith("boss-");
+    const group = (name, arr) => arr.length ? `<h2 class="sec fam"><span>${esc(name)}</span><span>${arr.filter(m => s.killed[m.id]).length} из ${arr.length}</span></h2><div class="beasts">${arr.map(card).join("")}</div>` : "";
+    for (const f of G.FAMILY_KEYS) h += group(G.FAMILIES[f].name, ms.filter(m => !isBoss(m) && G.familyOfMonster(m.id) === f));
+    h += group("Прочие", ms.filter(m => !isBoss(m) && !G.familyOfMonster(m.id))) + group("Боссы", ms.filter(isBoss));
+  } else if (sub === "trophies") {
+    // Элита: отдельная строка на каждый вид, трофей — просто в коллекцию.
+    h += `<h2 class="sec">ЭЛИТА И ТРОФЕИ</h2><p class="sub">Иногда монстр приходит матёрым: на уровень выше, ×${G.ELITE_KILL} опыта за убийство, ×${G.ELITE_GOLD} золота и трофей. Убито элиты: ${s.eliteKills}.</p><div class="beasts">`;
+    for (const id of G.ELITE_SPECIES) {
+      const m = G.eliteOf(G.MONSTERS[id]), k = s.eliteKilled[id] || 0;
+      h += `<div class="beast elite ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : "не встречен"}</span>${k ? `<span class="st">${esc(m.trophy)}</span>` : ""}</div>`;
+    }
+    // События года: что и когда, боссы событий и их трофеи.
+    h += `</div><h2 class="sec">СОБЫТИЯ ГОДА</h2><ul class="list titles events">${G.EVENTS.map(e => `<li>${art(EVENT_ICON[e.id]) ? `<img class="evico" src="${art(EVENT_ICON[e.id])}" alt="">` : ""}<span><b>${esc(e.name)}</b><small>${esc(e.desc)}</small></span></li>`).join("")}
   ${Object.entries(G.EVENT_BY_DATE).map(([d, e]) => { const m = G.MONSTERS[e.id], k = s.eventKills.includes(d); return `<li class="${k ? "" : "locked"}"><span><b>${esc(m.name)} · ${fmt(G.DAY_BY_DATE[d].on)}</b><small>${k ? "повержен · трофей: " + esc(e.trophy) : `×${G.EVENT_KILL} опыта и ×${G.EVENT_GOLD} золота за убийство, трофей`}</small></span></li>`; }).join("")}
-  <li><span><b>Кровавая луна</b><small>${[...G.MOON_DATES].map(fmt).join(", ")} · убито под луной: ${s.moonKills}</small></span></li></ul><div>`;
-  // Почётные титулы: получены за достижения, носится один. Пустой id — снова носить титул уровня.
-  h += `</div><h2 class="sec">ПОЧЁТНЫЕ ТИТУЛЫ</h2><p class="sub">Даются вместо награды за некоторые достижения. Эффект работает, пока титул надет.</p><ul class="list titles">${Object.entries(G.HONOR).map(([id, t]) => {
-    const own = s.honors.includes(id), worn = s.honor === id;
-    return `<li class="${own ? "" : "locked"}"><span><b>${esc(t.name)}</b><small>${esc(t.desc)} · за «${esc(s.achievements.find(a => a.id === id).name)}»</small></span>${worn ? `<button class="ghostbtn" data-wear="">снять</button>` : own ? `<button class="ghostbtn" data-wear="${id}">надеть</button>` : `<em>закрыт</em>`}</li>`;
-  }).join("")}</ul>`;
-  h += `<h2 class="sec">ТИТУЛЫ УРОВНЯ</h2><ul class="list titles">${G.TITLES.map((t, i) => { const r = rw["t:" + i]; return `<li class="${r?.reward.item ? "hard" : ""}"><span><b>${esc(t)}</b><small>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</small></span>${r ? (r.at ? `<em>${esc(r.text)} · получено</em>` : r.open ? `<button class="ghostbtn" data-claim="${r.id}">забрать</button>` : `<em>${esc(r.text)}</em>`) : ""}</li>`; }).join("")}</ul>
-`;
+  <li><span><b>Кровавая луна</b><small>${[...G.MOON_DATES].map(fmt).join(", ")} · убито под луной: ${s.moonKills}</small></span></li></ul>`;
+  } else {
+    // Почётные титулы: получены за достижения, носится один. Пустой id — снова носить титул уровня.
+    h += `<h2 class="sec">ПОЧЁТНЫЕ ТИТУЛЫ</h2><p class="sub">Даются вместо награды за некоторые достижения. Эффект работает, пока титул надет.</p><ul class="list titles">${Object.entries(G.HONOR).map(([id, t]) => {
+      const own = s.honors.includes(id), worn = s.honor === id;
+      return `<li class="${own ? "" : "locked"}"><span><b>${esc(t.name)}</b><small>${esc(t.desc)} · за «${esc(s.achievements.find(a => a.id === id).name)}»</small></span>${worn ? `<button class="ghostbtn" data-wear="">снять</button>` : own ? `<button class="ghostbtn" data-wear="${id}">надеть</button>` : `<em>закрыт</em>`}</li>`;
+    }).join("")}</ul>`;
+    h += `<h2 class="sec">ТИТУЛЫ УРОВНЯ</h2><ul class="list titles">${G.TITLES.map((t, i) => { const r = rw["t:" + i]; return `<li class="${r?.reward.item ? "hard" : ""}"><span><b>${esc(t)}</b><small>с ${i * 2 + 1} уровня${s.title === t ? " · сейчас" : ""}</small></span>${r ? (r.at ? `<em>${esc(r.text)} · получено</em>` : r.open ? `<button class="ghostbtn" data-claim="${r.id}">забрать</button>` : `<em>${esc(r.text)}</em>`) : ""}</li>`; }).join("")}</ul>`;
+  }
   main.innerHTML = h;
 }
 function wear(id, quiet) {
@@ -831,6 +937,8 @@ function claim(ids) {
 }
 main.addEventListener("click", e => {
   if (route().tab !== "chronicle") return;
+  const af = e.target.closest("[data-achf]");
+  if (af) { achFilter = af.dataset.achf; renderChronicle(); return; }
   const c = e.target.closest("[data-claim]");
   if (c) { claim([c.dataset.claim]); return; }
   const w = e.target.closest("[data-wear]");
@@ -845,12 +953,11 @@ function buildHTML(s) {
   let h = `<h2 class="sec">ХАРАКТЕРИСТИКИ</h2><p class="sub">Свободных очков: <b class="gold">${s.free}</b> из ${s.points} (уровни + боссы).</p><div class="build">`;
   for (const st of G.STATS) {
     const v = a.stats[st.id], bonus = eff[st.id] - v, canDown = v > prev.stats[st.id];
-    h += `<div class="stat"><div class="row"><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${eff[st.id]}</span><button data-st="${st.id}" data-d="1" ${s.free > 0 ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
+    h += `<div class="stat"><div class="row"><i class="sti">${statIcon(st.id)}</i><b>${st.name}</b><button data-st="${st.id}" data-d="-1" ${canDown ? "" : "disabled"} aria-label="Убрать очко">−</button><span class="v">${eff[st.id]}</span><button data-st="${st.id}" data-d="1" ${s.free > 0 ? "" : "disabled"} aria-label="Добавить очко">+</button></div>
       <small>${esc(st.per)} за очко${bonus ? ` · ${v} вложено, +${bonus} от узлов и вещей` : ""}${st.id === "lck" ? `<br>Сейчас: находка ${Math.round(s.findNow.find * 100)}%${s.findNow.rare ? `, из них редких ${Math.round(s.findNow.rare * 100)}%` : ""}. Сверх ${Math.round(G.FIND_MAX * 100)}% излишок идёт в шанс редкой находки.` : ""}</small></div>`;
   }
   h += `</div><h2 class="sec">ДРЕВО НАВЫКОВ</h2><p class="sub">Очков навыка: <b class="gold">${s.skillFree}</b> из ${s.skillPoints} (1 за уровень). Узел открывается, когда взяты те, что над ним. Из двух вершин — только одна.</p>
-  <div class="ttabs">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}">${st.name}</button>`).join("")}</div>${treeHTML(s, treeTab)}`;
-  h += gearHTML(s) + shopHTML(s);
+  <div class="ttabs ico">${G.STATS.map(st => `<button data-tt="${st.id}" aria-current="${treeTab === st.id}" aria-label="${st.name}">${statIcon(st.id)}<span>${STAT_SHORT[st.id]}</span></button>`).join("")}</div>${treeHTML(s, treeTab)}`;
   const can = G.canRespec(S.meta, todayISO());
   if (s.spent || s.skillSpent) h += can ? `<button class="act" id="respec">СБРОСИТЬ ОЧКИ И ДРЕВО</button><p class="hint">Сброс — один раз за блок. Снаряжение не снимается, полученный опыт не пересчитывается.</p>` : `<p class="hint">Сброс в этом блоке уже использован. Вложенное сегодня можно вернуть.</p>`;
   return h;
@@ -914,7 +1021,7 @@ function gearHTML(s) {
   const selSlot = gearSel?.slot || (gearSel?.item && G.itemOf(gearSel.item).slot);
   const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id, it)}</button>`; };
   const col = side => G.SLOTS.filter(sl => sl.side === side).map(cell).join("");
-  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/hero-doll.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
+  let h = `<div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/hero-doll.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
   // Подсказка к выбранному.
   let tip = `<div class="gtip empty"><span class="k">Снаряжение</span><b>Нажми на слот или вещь в сумке</b><small>Ромбик в углу — малый слот: вещи слабее, зато собираются в комплекты по семьям монстров.</small></div>`;
   if (gearSel?.slot) {
@@ -929,8 +1036,7 @@ function gearHTML(s) {
   // Итог снаряжения и комплекты.
   const sum = Object.fromEntries(G.STATS.map(st => [st.id, 0]));
   for (const id of worn) if (id) for (const [k, v] of Object.entries(G.itemOf(id).stats)) sum[k] += v;
-  const SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
-  h += `<div class="gsum">${G.STATS.map(st => `<div>${SHORT[st.id] || st.name}<b>+${sum[st.id]}</b></div>`).join("")}</div>`;
+  h += `<div class="gsum">${G.STATS.map(st => `<div>${statIcon(st.id)}${STAT_SHORT[st.id]}<b>+${sum[st.id]}</b></div>`).join("")}</div>`;
   const sets = Object.entries(s.build.sets.n).filter(([, n]) => n >= 1).sort((a, b) => b[1] - a[1]);
   const vs = f => G.FAMILIES[f].name.toLowerCase();
   if (sets.length) h += `<p class="gset">${sets.map(([f, n]) => `<b>${G.FAMILIES[f].set}</b> ${n} из 5: ${n >= 4 ? `в боях (${vs(f)}) +${(G.SET2_XP + G.SET4_XP) * 100}% опыта, +${G.SET4_GOLD * 100}% золота, +${G.SET4_FIND * 100}% к находке` : n >= 2 ? `в боях (${vs(f)}) +${G.SET2_XP * 100}% опыта. С 4 вещами ещё +${G.SET4_XP * 100}% опыта, +${G.SET4_GOLD * 100}% золота и +${G.SET4_FIND * 100}% к находке` : `с 2 вещами +${G.SET2_XP * 100}% опыта в боях (${vs(f)})`}`).join("<br>")}</p>`;
@@ -941,28 +1047,37 @@ function gearHTML(s) {
   return h;
 }
 // ---------- торговец и кузница ----------
-let shopSlot = "weapon", shopStat = "str", shopFam = "goblin", forgeSel = [];
+let shopSlot = "weapon", shopStat = "str", shopFam = "goblin", forgeSel = [], shopTab = "merchant";
 const shopId = n => G.SLOT_BY_ID[shopSlot].small ? `s:${shopSlot}:${shopStat}:${n}:${shopFam}` : `s:${shopSlot}:${shopStat}:${n}`;
 function shopHTML(s) {
   const b = s.build, gold = s.gold;
   const pc = G.priceOf(G.PRICE_COMMON, b, todayISO()), fee = G.priceOf(G.FORGE_FEE, b, todayISO()), myth = G.priceOf(G.MYTHIC_COST, b, todayISO());
   const preview = G.itemOf(shopId(0)), sleg = G.priceOf(G.SMALL_LEG_COST, b, todayISO());
-  let h = `<h2 class="sec">ТОРГОВЕЦ</h2><p class="sub">Золото: <b class="gold">${gold}</b> · всего добыто ${s.goldEarned}. Золото дают только убийства.${G.isFair(todayISO()) ? ` <b class="gold">Ярмарка: всё на ${G.FAIR_DISCOUNT * 100}% дешевле до конца недели.</b>` : ""}</p>
-  <div class="ttabs s3">${G.SLOTS.map(sl => `<button data-sslot="${sl.id}" aria-current="${shopSlot === sl.id}">${sl.name}</button>`).join("")}</div>
-  <div class="ttabs">${G.STATS.map(st => `<button data-sstat="${st.id}" aria-current="${shopStat === st.id}">${st.name}</button>`).join("")}</div>
+  const fair = G.isFair(todayISO());
+  const npc = (id, name, say) => `<div class="npc ${art("npc-" + id) ? "hasart" : ""}">${art("npc-" + id) ? `<img src="${art("npc-" + id)}" alt="">` : ""}<div class="say"><b>${name}</b><span>${say}</span><em>Золото: <b class="gold">${gold}</b></em></div></div>`;
+  const chips = `<div class="chips"><button data-shoptab="merchant" aria-current="${shopTab === "merchant"}">Торговец</button><button data-shoptab="forge" aria-current="${shopTab === "forge"}">Кузница</button></div>`;
+  if (shopTab === "merchant") {
+    const pic = sl => gearIcon(sl.id, G.itemOf(sl.small ? `s:${sl.id}:${shopStat}:0:${shopFam}` : `s:${sl.id}:${shopStat}:0`));
+    return npc("merchant", "Торговец", fair ? `«Ярмарка, странник. Всё на ${G.FAIR_DISCOUNT * 100}% дешевле до конца недели».` : "«Обычные вещи, зато честные. Золото вперёд».") + chips + `
+  <p class="sub">Всего добыто золота: ${s.goldEarned}. Золото дают только убийства.</p>
+  <div class="shopgrid">${G.SLOTS.map(sl => `<button class="gsl common${sl.small ? " small" : ""}" data-sslot="${sl.id}" aria-pressed="${shopSlot === sl.id}">${pic(sl)}<span>${sl.name}</span></button>`).join("")}</div>
+  <div class="ttabs ico">${G.STATS.map(st => `<button data-sstat="${st.id}" aria-current="${shopStat === st.id}" aria-label="${st.name}">${statIcon(st.id)}<span>${STAT_SHORT[st.id]}</span></button>`).join("")}</div>
   ${G.SLOT_BY_ID[shopSlot].small ? `<div class="ttabs s4">${G.FAMILY_KEYS.map(f => `<button data-sfam="${f}" aria-current="${shopFam === f}">${G.FAMILIES[f].name}</button>`).join("")}</div>` : ""}
-  <button class="act ${gold >= pc ? "gold" : ""}" id="buy" ${gold >= pc ? "" : "disabled"}>КУПИТЬ · ${pc} з.</button>
-  <p class="hint">${esc(preview.name)}: ${esc(G.itemText(preview))}. Торговец продаёт только обычные вещи.</p>`;
+  <div class="gtip common"><span class="k">${slotName(shopSlot)} · ${G.SLOT_BY_ID[shopSlot].small ? "малый слот" : "главный слот"} · обычная</span><b>${esc(preview.name)}</b><small>${esc(G.itemText(preview))}</small></div>
+  <button class="act ${gold >= pc ? "gold" : ""}" id="buy" ${gold >= pc ? "" : "disabled"} style="margin-top:10px">КУПИТЬ · ${pc} з.</button>
+  <p class="hint">Торговец продаёт только обычные вещи. Редкие куёт кузнец.</p>`;
+  }
+  let h = npc("smith", "Кузнец", "«Две обычные в горн, одна редкая из горна».") + chips;
   // Кузница: две обычные вещи одного слота + плата → редкая с их характеристиками (без узла).
   const commons = s.inventory.filter(it => it.rarity === "common");
   forgeSel = forgeSel.filter(id => commons.some(it => it.id === id));
-  h += `<h2 class="sec">КУЗНИЦА</h2><p class="sub">Выбери две обычные вещи одного слота — кузнец скуёт из них редкую с обеими характеристиками. В малых слотах редкая получает характеристику и семью первой вещи. Плата ${fee} з. Легендарку главного слота сковать нельзя.</p>`;
+  h += `<h2 class="sec">РЕДКАЯ ИЗ ДВУХ ОБЫЧНЫХ</h2><p class="sub">Выбери две обычные вещи одного слота — кузнец скуёт из них редкую с обеими характеристиками. В малых слотах редкая получает характеристику и семью первой вещи. Плата ${fee} з. Легендарку главного слота сковать нельзя.</p>`;
   if (commons.length < 2) h += `<p class="hint">Нужно хотя бы две обычные вещи.</p>`;
   else {
     const selSlot = forgeSel.length && G.itemOf(forgeSel[0]).slot;
     h += `<ul class="list inv forge">${commons.map(it => {
       const on = forgeSel.includes(it.id), can = on || (forgeSel.length < 2 && (!selSlot || selSlot === it.slot));
-      return `<li class="${on ? "sel" : ""}"><span><b>${esc(it.name)}</b><small>${slotName(it.slot)} · ${esc(G.itemText(it))}${b.eq[it.slot] === it.id ? " · надето" : ""}</small></span><button class="ghostbtn" data-fsel="${it.id}" ${can ? "" : "disabled"}>${on ? "убрать" : "в горн"}</button></li>`;
+      return `<li class="${on ? "sel" : ""}"><i class="gsl common mini">${gearIcon(it.slot, it)}</i><span><b>${esc(it.name)}</b><small>${slotName(it.slot)} · ${esc(G.itemText(it))}${b.eq[it.slot] === it.id ? " · надето" : ""}</small></span><button class="ghostbtn" data-fsel="${it.id}" ${can ? "" : "disabled"}>${on ? "убрать" : "в горн"}</button></li>`;
     }).join("")}</ul>`;
     if (forgeSel.length === 2) {
       const out = G.itemOf(forgeId(forgeSel));
@@ -971,13 +1086,13 @@ function shopHTML(s) {
   }
   // Малые легендарки: редкая вещь малого слота + ещё одна вещь того же слота (уходит в горн самая слабая) + плата.
   const smallRares = s.inventory.filter(it => it.small && it.rarity === "rare");
-  h += `<p class="sub" style="margin-top:14px">Малая легендарка: редкая вещь малого слота становится легендарной (своя характеристика, опыт за свою семью и особый эффект слота). Нужна ещё одна вещь того же слота, она уйдёт в горн. ${sleg} з.</p>`;
+  h += `<h2 class="sec">МАЛАЯ ЛЕГЕНДАРКА</h2><p class="sub">Редкая вещь малого слота становится легендарной (своя характеристика, опыт за свою семью и особый эффект слота). Нужна ещё одна вещь того же слота, она уйдёт в горн. ${sleg} з.</p>`;
   h += smallRares.length ? `<ul class="list inv">${smallRares.map(it => {
     const fuel = smallFuel(s, it), L = G.itemOf("S:" + it.id);
     return `<li class="legendary"><span><b>${esc(it.name)} → ${esc(L.name)}</b><small>${esc(L.desc)}${fuel ? `. В горн: ${esc(fuel.name)}` : `. Нужна ещё одна вещь слота «${slotName(it.slot)}»`}</small></span><button class="ghostbtn" data-sleg="${it.id}" ${fuel && gold >= sleg ? "" : "disabled"}>улучшить</button></li>`;
   }).join("")}</ul>` : `<p class="hint">Редких вещей малых слотов пока нет: они бывают в находках или куются из двух обычных.</p>`;
   const legs = s.inventory.filter(it => it.rarity === "legendary" && !it.small);
-  h += `<p class="sub" style="margin-top:14px">Пробуждение: легендарная вещь становится мифической (+5 к характеристике, усиленный эффект). Только из своей легендарки, ${myth} з.</p>`;
+  h += `<h2 class="sec">ПРОБУЖДЕНИЕ</h2><p class="sub">Легендарная вещь становится мифической (+5 к характеристике, усиленный эффект). Только из своей легендарки, ${myth} з.</p>`;
   h += legs.length ? `<ul class="list inv">${legs.map(it => { const M = G.itemOf("M:" + it.id); return `<li class="mythic"><span><b>${esc(it.name)} → ${esc(M.name)}</b><small>${esc(G.itemText(M))}</small></span><button class="ghostbtn" data-myth="${it.id}" ${gold >= myth ? "" : "disabled"}>пробудить</button></li>`; }).join("")}</ul>` : `<p class="hint">Легендарки пока нет — она падает только с боссов.</p>`;
   return h;
 }
@@ -1051,6 +1166,8 @@ main.addEventListener("click", e => {
     if (eq) g.eq[G.itemOf(eq.dataset.equip).slot] = eq.dataset.equip; else delete g.eq[uq.dataset.unequip];
     saveHero(); return;
   }
+  const stb = e.target.closest("[data-shoptab]");
+  if (stb) { shopTab = stb.dataset.shoptab; renderHero(); return; }
   const ss = e.target.closest("[data-sslot]"), sst = e.target.closest("[data-sstat]"), sf = e.target.closest("[data-sfam]");
   if (ss || sst || sf) { if (ss) shopSlot = ss.dataset.sslot; else if (sst) shopStat = sst.dataset.sstat; else shopFam = sf.dataset.sfam; renderHero(); return; }
   if (e.target.closest("#buy")) {
