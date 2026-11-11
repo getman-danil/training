@@ -65,7 +65,9 @@
       "plan": "3×10 на ногу",
       "planWeight": "16 кг",
       "weight": "16 кг",
-      "reps": [],
+      "reps": [
+        10
+      ],
       "note": ""
     },
     {
@@ -74,7 +76,11 @@
       "plan": "3×12 + 3×12",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12,
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -96,9 +102,9 @@
   "game": {
     "monster": "Матёрый гоблин-шаман",
     "hp": 1584,
-    "dealt": 858,
+    "dealt": 1122,
     "overkill": 39,
     "killed": false
   },
-  "updatedAt": 1794421590070
+  "updatedAt": 1794421832883
 }
