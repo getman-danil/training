@@ -886,7 +886,7 @@ const GEAR_ICON = {
 // Картинки вещей из Gemini: assets/gear/gear-<слот>-<семья>.webp для малых слотов (своя у каждой семьи),
 // assets/gear/gear-<слот>.webp для главных, фигура — assets/gear/hero-doll.webp.
 // Добавленную картинку вписать сюда (имя без .webp), иначе остаётся временный значок.
-const GEAR_IMG = new Set([]);
+const GEAR_IMG = new Set(["gear-amulet", "gear-armor", "gear-boots-demon", "gear-boots-dragon", "gear-boots-goblin", "gear-boots-lizard", "gear-boots-minotaur", "gear-boots-orc", "gear-boots-treant", "gear-boots-undead", "gear-cloak-demon", "gear-cloak-dragon", "gear-cloak-goblin", "gear-cloak-lizard", "gear-cloak-minotaur", "gear-cloak-orc", "gear-cloak-treant", "gear-cloak-undead", "gear-gloves-demon", "gear-gloves-dragon", "gear-gloves-goblin", "gear-gloves-lizard", "gear-gloves-minotaur", "gear-gloves-orc", "gear-gloves-treant", "gear-gloves-undead", "gear-helm-demon", "gear-helm-dragon", "gear-helm-goblin", "gear-helm-lizard", "gear-helm-minotaur", "gear-helm-orc", "gear-helm-treant", "gear-helm-undead", "gear-ring", "gear-shield-demon", "gear-shield-dragon", "gear-shield-goblin", "gear-shield-lizard", "gear-shield-minotaur", "gear-shield-orc", "gear-shield-treant", "gear-shield-undead", "gear-weapon", "hero-doll"]);
 const gearIcon = (slot, it) => {
   const key = it?.family ? `gear-${slot}-${it.family}` : `gear-${slot}`;
   if (it && GEAR_IMG.has(key)) return `<img src="assets/gear/${key}.webp" alt="" loading="lazy">`;
