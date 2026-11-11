@@ -401,7 +401,7 @@ body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
 .blk>summary::-webkit-details-marker{display:none}
 .ban{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;margin:0 -16px;padding:12px 16px 10px;min-height:76px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background-color:#12110f;background-size:cover;background-position:60% 50%;overflow:hidden}
 .ban::before{content:"";position:absolute;inset:0;pointer-events:none}
-.ban.art::before{background:linear-gradient(90deg,rgba(11,10,9,.92),rgba(11,10,9,.45) 55%,rgba(11,10,9,.15))}
+.ban.hasart::before{background:linear-gradient(90deg,rgba(11,10,9,.92),rgba(11,10,9,.45) 55%,rgba(11,10,9,.15))}
 .ban>*{position:relative}
 .ban .m,.ban .m2{font-family:var(--caps);font-size:11.500px;letter-spacing:.16em;color:var(--dust);text-transform:uppercase}
 .ban .m2{letter-spacing:.08em;text-transform:none;font-size:13px;color:var(--mute)}
@@ -425,7 +425,7 @@ body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0))}
 .d-swamp{background-image:radial-gradient(70% 160% at 82% 50%,rgba(110,150,60,.22),transparent 70%)}
 .wkban{min-height:0;padding:6px 16px;border-bottom:0}
 .wkban .nm{font-size:14px;letter-spacing:.14em;color:var(--dust)}
-.wkban.art{min-height:44px}
+.wkban.hasart{min-height:44px}
 .wk.now{margin:0 -16px;padding:8px 16px;background:linear-gradient(90deg,rgba(201,162,74,.12),transparent 70%);box-shadow:inset 2px 0 0 var(--gold)}
 .nowtag{display:block;font-style:normal;font-size:12px;letter-spacing:.1em;color:var(--gold)}
 details.more{border-top:1px solid var(--line);margin-top:10px}
@@ -444,10 +444,10 @@ details.more[open] summary::after{content:"–"}
 .ttabs.ico button[aria-current="true"] svg{color:var(--gold)}
 .gsum svg{display:block;width:16px;height:16px;margin:0 auto 1px;color:var(--mute)}
 .npc{position:relative;margin:0 -16px;min-height:96px;padding:16px;border-bottom:1px solid var(--line);background:radial-gradient(60% 120% at 80% 80%,rgba(255,110,30,.16),transparent 70%),linear-gradient(#15120e,var(--ink));overflow:hidden}
-.npc.art{min-height:170px}
+.npc.hasart{min-height:170px}
 .npc img{position:absolute;right:-4px;bottom:0;height:100%;width:auto;max-width:60%;object-fit:contain;object-position:100% 100%}
 .npc .say{position:relative;max-width:100%}
-.npc.art .say{max-width:56%}
+.npc.hasart .say{max-width:56%}
 .npc .say>b{display:block;font-family:var(--caps);font-weight:500;font-size:24px;letter-spacing:.08em}
 .npc .say span{display:block;font-style:italic;color:var(--dust);font-size:16px}
 .npc .say em{display:block;font-style:normal;margin-top:6px;font-family:var(--caps);letter-spacing:.06em}
@@ -495,3 +495,21 @@ details.rule summary::-webkit-details-marker{display:none}
 details.rule summary::after{content:"+";color:var(--mute)}
 details.rule[open] summary::after{content:"–"}
 details.rule p{margin:0 0 12px}
+
+/* полоса события над боем */
+.evstrip{display:flex;align-items:center;gap:12px;margin:8px 0 0;padding:6px 12px 6px 6px;border:1px solid var(--line);background:linear-gradient(90deg,rgba(255,255,255,.03),transparent)}
+.evstrip img{width:52px;height:52px;object-fit:contain;flex:0 0 52px}
+.evstrip div{min-width:0}
+.evstrip b{display:block;font-family:var(--caps);font-weight:500;letter-spacing:.08em;font-size:16px}
+.evstrip span{display:block;font-style:italic;color:var(--dust);font-size:14px;line-height:1.25}
+.evstrip.ev-moon{border-color:#5a1a14;background:linear-gradient(90deg,rgba(142,26,18,.20),transparent)}
+.evstrip.ev-moon b{color:#d4534a}
+.evstrip.ev-invasion{border-color:#2e3f4a;background:linear-gradient(90deg,rgba(90,140,180,.14),transparent)}
+.evstrip.ev-invasion b{color:#8fb6d4}
+.evstrip.ev-winter{border-color:#2e3f4a;background:linear-gradient(90deg,rgba(140,190,230,.16),transparent)}
+.evstrip.ev-winter b{color:#a9d0ee}
+.evstrip.ev-fair{border-color:#6b5b3a;background:linear-gradient(90deg,rgba(201,162,74,.14),transparent)}
+.evstrip.ev-fair b{color:var(--gold)}
+.events li{align-items:center;justify-content:flex-start}
+.evico{width:44px;height:44px;object-fit:contain;flex:0 0 44px}
+.ban.hasart .m,.ban.hasart .m2,.ban.hasart .nm{text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8)}

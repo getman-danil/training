@@ -113,8 +113,8 @@ const STAT_ICON = {
 const statIcon = id => svg(STAT_ICON[id]);
 const STAT_SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
 // Картинки из Gemini, которые уже лежат в assets/art (имя без .webp): пейзажи подземелий dungeon-<ключ>,
-// персонажи npc-merchant и npc-smith, значки событий. Пока картинки нет — рисуется запасной фон.
-const ART = new Set([]);
+// персонажи npc-merchant и npc-smith, значки событий event-<moon|fair|winter|undead>. Пока картинки нет — рисуется запасной фон.
+const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead"]);
 const art = name => ART.has(name) ? `assets/art/${name}.webp` : "";
 
 // ---------- маршруты ----------
@@ -167,9 +167,25 @@ function renderBattle(date) {
   const loc = `${G.locationFor(day).toUpperCase()} · НЕДЕЛЯ ${day.week}${ev.length ? " · " + ev.join(", ").toUpperCase() : ""}`;
   let html = `<div class="loc">${esc(loc)}</div>
   <div class="daynav"><button class="arr" data-wk="${wi - 1}" ${wi === 0 ? "disabled" : ""} aria-label="Прошлая неделя">‹</button><div class="days">${days}</div><button class="arr" data-wk="${wi + 1}" ${wi === G.WEEKS.length - 1 ? "disabled" : ""} aria-label="Следующая неделя">›</button></div>`;
+  html += eventStrip(day);
   html += G.isCardio(day) ? cardioHTML(day, L) : stageHTML(day) + exercisesHTML(day);
   main.innerHTML = html;
   if (!G.isCardio(day)) updateStage(false);
+}
+
+// Полоса события над боем: значок и что оно даёт в этот день.
+const EVENT_ICON = { invasion: "event-undead", winter: "event-winter", moon: "event-moon", fair: "event-fair" };
+function dayEvents(day) {
+  const out = [], ev = G.EVENT_BY_DATE[day.date]?.ev;
+  if (ev) out.push(ev);
+  if (G.isMoon(day)) out.push("moon");
+  if (G.isSession(day) && !out.includes("invasion")) out.push("invasion");
+  if (G.FAIR_WEEKS.has(day.week)) out.push("fair");
+  return out;
+}
+function eventStrip(day) {
+  return dayEvents(day).map(id => { const e = G.EVENTS.find(x => x.id === id), img = art(EVENT_ICON[id]);
+    return `<div class="evstrip ev-${id}">${img ? `<img src="${img}" alt="">` : ""}<div><b>${esc(e.name)}</b><span>${esc(e.desc)}</span></div></div>`; }).join("");
 }
 
 function stageHTML(day) {
@@ -672,7 +688,7 @@ function renderJourney() {
   for (const b of blocks) {
     const done = b.weeks.filter(w => ["ok", "frozen"].includes(stOf(w).status)).length, key = DUNGEON_ART[b.bn] || "goblin";
     const past = b.weeks.every(w => !["now", "future"].includes(stOf(w).status));
-    h += `<details class="blk ${b.bn === curBn ? "cur" : ""} ${past ? "past" : ""}" data-blk="${b.bn}" ${openBlk.has(b.bn) ? "open" : ""}><summary class="ban d-${key} ${art("dungeon-" + key) ? "art" : ""}"${banStyle(key)}>
+    h += `<details class="blk ${b.bn === curBn ? "cur" : ""} ${past ? "past" : ""}" data-blk="${b.bn}" ${openBlk.has(b.bn) ? "open" : ""}><summary class="ban d-${key} ${art("dungeon-" + key) ? "hasart" : ""}"${banStyle(key)}>
       <span class="m">${esc(b.title.replace(/^Блок (\d+)\.\s*/, "Блок $1 · "))}</span><span class="nm">${esc(G.dungeon(b.bn).name)}</span>
       <span class="m2">${fmt(b.weeks[0].onFrom)} — ${fmt(b.weeks[b.weeks.length - 1].onTo)} · недель пройдено: ${done} из ${b.weeks.length}</span><span class="pr"><i style="width:${done / b.weeks.length * 100}%"></i></span></summary>`;
     for (const w of b.weeks) {
@@ -684,7 +700,7 @@ function renderJourney() {
       }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
       const manual = (S.meta.freezes || []).includes(w.n), swamp = G.SWAMP_WEEKS.has(w.n);
       const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
-      if (swamp) h += `<div class="wkban ban d-swamp ${art("dungeon-swamp") ? "art" : ""}"${banStyle("swamp")}><span class="nm">${esc(G.SWAMP.name)}</span></div>`;
+      if (swamp) h += `<div class="wkban ban d-swamp ${art("dungeon-swamp") ? "hasart" : ""}"${banStyle("swamp")}><span class="nm">${esc(G.SWAMP.name)}</span></div>`;
       h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
         <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.weekEvents(w).map(e => ` · <span class="evt">${esc(e)}</span>`).join("")}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
         <div class="r">${st.status === "now" ? '<em class="nowtag">сейчас</em>' : ""}${st.done}/${st.goal}${st.tavern ? "<br>таверна" : ""}${canFreeze ? `<button data-freeze="${w.n}">${manual ? "разморозить" : "заморозить"}</button>` : ""}</div></div>`;
@@ -888,7 +904,7 @@ function renderChronicle() {
       h += `<div class="beast elite ${k ? "" : "unseen"}"><div class="pic"><img src="${m.img}" alt="" loading="lazy"></div><b>${k ? esc(m.name) : "???"}</b><span>${k ? "убит ×" + k : "не встречен"}</span>${k ? `<span class="st">${esc(m.trophy)}</span>` : ""}</div>`;
     }
     // События года: что и когда, боссы событий и их трофеи.
-    h += `</div><h2 class="sec">СОБЫТИЯ ГОДА</h2><ul class="list titles events">${G.EVENTS.map(e => `<li><span><b>${esc(e.name)}</b><small>${esc(e.desc)}</small></span></li>`).join("")}
+    h += `</div><h2 class="sec">СОБЫТИЯ ГОДА</h2><ul class="list titles events">${G.EVENTS.map(e => `<li>${art(EVENT_ICON[e.id]) ? `<img class="evico" src="${art(EVENT_ICON[e.id])}" alt="">` : ""}<span><b>${esc(e.name)}</b><small>${esc(e.desc)}</small></span></li>`).join("")}
   ${Object.entries(G.EVENT_BY_DATE).map(([d, e]) => { const m = G.MONSTERS[e.id], k = s.eventKills.includes(d); return `<li class="${k ? "" : "locked"}"><span><b>${esc(m.name)} · ${fmt(G.DAY_BY_DATE[d].on)}</b><small>${k ? "повержен · трофей: " + esc(e.trophy) : `×${G.EVENT_KILL} опыта и ×${G.EVENT_GOLD} золота за убийство, трофей`}</small></span></li>`; }).join("")}
   <li><span><b>Кровавая луна</b><small>${[...G.MOON_DATES].map(fmt).join(", ")} · убито под луной: ${s.moonKills}</small></span></li></ul>`;
   } else {
@@ -1038,7 +1054,7 @@ function shopHTML(s) {
   const pc = G.priceOf(G.PRICE_COMMON, b, todayISO()), fee = G.priceOf(G.FORGE_FEE, b, todayISO()), myth = G.priceOf(G.MYTHIC_COST, b, todayISO());
   const preview = G.itemOf(shopId(0)), sleg = G.priceOf(G.SMALL_LEG_COST, b, todayISO());
   const fair = G.isFair(todayISO());
-  const npc = (id, name, say) => `<div class="npc ${art("npc-" + id) ? "art" : ""}">${art("npc-" + id) ? `<img src="${art("npc-" + id)}" alt="">` : ""}<div class="say"><b>${name}</b><span>${say}</span><em>Золото: <b class="gold">${gold}</b></em></div></div>`;
+  const npc = (id, name, say) => `<div class="npc ${art("npc-" + id) ? "hasart" : ""}">${art("npc-" + id) ? `<img src="${art("npc-" + id)}" alt="">` : ""}<div class="say"><b>${name}</b><span>${say}</span><em>Золото: <b class="gold">${gold}</b></em></div></div>`;
   const chips = `<div class="chips"><button data-shoptab="merchant" aria-current="${shopTab === "merchant"}">Торговец</button><button data-shoptab="forge" aria-current="${shopTab === "forge"}">Кузница</button></div>`;
   if (shopTab === "merchant") {
     const pic = sl => gearIcon(sl.id, G.itemOf(sl.small ? `s:${sl.id}:${shopStat}:0:${shopFam}` : `s:${sl.id}:${shopStat}:0`));
