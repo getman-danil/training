@@ -883,7 +883,14 @@ const GEAR_ICON = {
   gloves: '<path d="M7 21 V11 L7 6 Q8 4 9 6 V11 V4 Q10 2 11 4 V11 V3.5 Q12 2 13 3.5 V11 V5 Q14 3 15 5 V13 L17 11 Q19 11 18 13 L15 19 V21 Z"/>',
   ring: '<circle cx="12" cy="14" r="6"/><path d="M10 6 L12 3 L14 6 L12 8 Z"/>',
 };
-const gearIcon = slot => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">${GEAR_ICON[slot]}</svg>`;
+// Картинки вещей из Gemini: assets/gear/<семья>-<слот>.webp для малых слотов (своя у каждой семьи),
+// assets/gear/<слот>.webp для главных. Добавленную картинку вписать сюда, иначе остаётся временный значок.
+const GEAR_IMG = new Set([]);
+const gearIcon = (slot, it) => {
+  const key = it?.family ? `${it.family}-${slot}` : slot;
+  if (it && GEAR_IMG.has(key)) return `<img src="assets/gear/${key}.webp" alt="" loading="lazy">`;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">${GEAR_ICON[slot]}</svg>`;
+};
 const HERO_FIG = `<svg viewBox="0 0 200 320" aria-hidden="true"><defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a342a"/><stop offset="1" stop-color="#1a1713"/></linearGradient></defs>
 <path d="M58 92 L40 300 L160 300 L142 92 Z" fill="#17140f" stroke="#2e2b25"/><rect x="78" y="200" width="18" height="86" fill="url(#hg)" stroke="#5a5244"/><rect x="104" y="200" width="18" height="86" fill="url(#hg)" stroke="#5a5244"/>
 <path d="M72 284 h26 v12 h-28 z M102 284 h26 v12 h-28 z" fill="#2a251d" stroke="#5a5244"/><path d="M70 92 Q100 82 130 92 L136 150 L126 206 L74 206 L64 150 Z" fill="url(#hg)" stroke="#5a5244"/>
@@ -904,7 +911,7 @@ function gearHTML(s) {
   const bag = inv.filter(it => !worn.has(it.id)).reverse();
   if (gearSel?.item && !bag.some(it => it.id === gearSel.item)) gearSel = null;
   const selSlot = gearSel?.slot || (gearSel?.item && G.itemOf(gearSel.item).slot);
-  const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id)}</button>`; };
+  const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id, it)}</button>`; };
   const col = side => G.SLOTS.filter(sl => sl.side === side).map(cell).join("");
   let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
   // Подсказка к выбранному.
@@ -929,7 +936,7 @@ function gearHTML(s) {
   h += `<div class="gbag-h"><span>СУМКА</span><span>${bag.length ? `${bag.length} ${plural(bag.length, "вещь", "вещи", "вещей")}` : "пусто"}</span></div>`;
   if (!inv.length) return h + `<p class="hint">Вещи падают с находок (шанс растёт с Удачей) и всегда — с боссов.</p>`;
   const cells = Math.max(12, Math.ceil(bag.length / 6) * 6);
-  h += `<div class="gbag">${Array.from({ length: cells }, (_, k) => { const it = bag[k]; return it ? `<button class="gsl ${it.rarity}${it.small ? " small" : ""}${gearSel?.item === it.id ? " sel" : ""}${gearSel?.slot === it.slot ? " fit" : ""}" data-gitem="${it.id}" aria-label="${esc(it.name)}">${gearIcon(it.slot)}</button>` : `<i class="gsl empty"></i>`; }).join("")}</div>`;
+  h += `<div class="gbag">${Array.from({ length: cells }, (_, k) => { const it = bag[k]; return it ? `<button class="gsl ${it.rarity}${it.small ? " small" : ""}${gearSel?.item === it.id ? " sel" : ""}${gearSel?.slot === it.slot ? " fit" : ""}" data-gitem="${it.id}" aria-label="${esc(it.name)}">${gearIcon(it.slot, it)}</button>` : `<i class="gsl empty"></i>`; }).join("")}</div>`;
   return h;
 }
 // ---------- торговец и кузница ----------

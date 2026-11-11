@@ -344,6 +344,7 @@ details.more summary{font-family:var(--caps);letter-spacing:.1em;color:var(--dus
 .gfig span{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:var(--caps);font-size:12px;letter-spacing:.14em;color:var(--mute)}
 .gsl{width:58px;height:58px;border:1px solid var(--line2);background:linear-gradient(#1a1815,#0d0c0b);display:grid;place-items:center;position:relative;color:var(--dust);padding:0}
 .gsl svg{width:34px;height:34px}
+.gsl img{width:88%;height:88%;object-fit:contain}
 .gsl.empty{border-style:dashed;border-color:var(--line)}
 .gsl.empty svg{opacity:.22}
 .gsl.common{border-color:#4a4538}
