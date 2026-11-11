@@ -15,17 +15,18 @@
 </head>
 <body>
 <header class="top">
-  <button class="lvl" id="lvlBtn" aria-label="Герой"><span>ур.</span><b id="lvl">1</b></button>
+  <button class="lvl" id="lvlBtn" aria-label="Герой"><img class="face" src="assets/gear/hero-face.webp" alt="" width="40" height="40"><span>ур.<b id="lvl">1</b></span></button>
   <div class="xp"><span id="xpTxt">Странник · 0 / 200</span><div class="bar"><i id="xpBar"></i></div></div>
+  <a class="cog" href="#/settings" aria-label="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.500v3M12 18.500v3M2.500 12h3M18.500 12h3M5.300 5.300l2.100 2.100M16.600 16.600l2.100 2.100M5.300 18.700l2.100-2.100M16.600 7.400l2.100-2.100"/></svg></a>
   <button class="syncdot" id="syncBtn" aria-label="Синхронизация"><i></i></button>
 </header>
 <main id="main"></main>
 <nav class="tabs" role="tablist">
-  <a href="#/battle" data-tab="battle">Бой</a>
-  <a href="#/journey" data-tab="journey">Поход</a>
-  <a href="#/progress" data-tab="progress">Прогресс</a>
-  <a href="#/hero" data-tab="hero">Герой</a>
-  <a href="#/chronicle" data-tab="chronicle">Летопись</a>
+  <a href="#/battle" data-tab="battle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l11 11M20 4L9 15M4 4v3M4 4h3M20 4v3M20 4h-3M7.500 13.500l-3 3 3 3 3-3M16.500 13.500l3 3-3 3-3-3"/></svg><span>Бой</span></a>
+  <a href="#/journey" data-tab="journey"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V3M6 4h11l-3 3.500 3 3.500H6M3 21h7M12 21c1-3 3-3 4-5s3-2 5-2"/></svg><span>Поход</span></a>
+  <a href="#/progress" data-tab="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20v-6M11 20V9M16 20v-9M4 9l5-4 4 3 7-5M20 3v4M20 3h-4"/></svg><span>Прогресс</span></a>
+  <a href="#/hero" data-tab="hero"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-9a7 7 0 0114 0v9h-5v-6h-4v6zM5 12h5M14 12h5M12 4V2"/></svg><span>Герой</span></a>
+  <a href="#/chronicle" data-tab="chronicle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2-1.500-5-2-8-1.500v14c3-.500 6 0 8 1.500 2-1.500 5-2 8-1.500v-14c-3-.500-6 0-8 1.500zM12 6v14M6.500 9h3M6.500 12h3M14.500 9h3M14.500 12h3"/></svg><span>Летопись</span></a>
 </nav>
 <div class="sheet" id="sheet" hidden>
   <div class="in">
