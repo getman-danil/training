@@ -399,7 +399,7 @@ export function computePRs(logs) {
           dayBest = Math.max(dayBest, r);
         }
       });
-      if (dayBest) list.push({ date: ord(date), key: date, name: it.name, kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}),
+      if (dayBest) list.push({ date: day ? whenOf(day, L) : ord(date), key: date, name: it.name, kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}),
         text: newKg ? `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` : `${dayBest} повт. (было ${preReps})` });
       updates.push([key, name, Math.max(...reps), wk]);
     });
@@ -408,6 +408,8 @@ export function computePRs(logs) {
       bestKg[name] = Math.max(bestKg[name] ?? -Infinity, wk);
     }
   }
+  // Порядок подсчёта — по плану, а в списке рекорды идут по реальной дате.
+  list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return { prs, list, bestReps, bestKg };
 }
 

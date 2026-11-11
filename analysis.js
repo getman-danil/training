@@ -1,6 +1,6 @@
 // Встроенный разбор прогресса: работает без Claude и без интернета.
 // Ряды по упражнениям, выполнение плана по неделям и простые правила-подсказки.
-import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal, isSortieKey, sortieDate, monsterFor, isOptional } from "./game.js";
+import { DAYS, WEEKS, DAY_BY_DATE, parsePlan, normName, kg, isCardio, battle, weekGoal, isSortieKey, sortieDate, monsterFor, isOptional, whenOf } from "./game.js";
 
 // Ряд по каждому упражнению: лучшая попытка, сумма повторов, вес, доля плана.
 // Свои упражнения (дополнение, замена, вылазка) идут в те же ряды по названию, но без доли плана.
@@ -9,7 +9,7 @@ export function exerciseSeries(logs) {
   for (const key0 of Object.keys(logs)) {
     const day = DAY_BY_DATE[key0], L = logs[key0];
     if (!L || L.deleted || (!day && !isSortieKey(key0))) continue;
-    const date = day ? key0 : sortieDate(L);
+    const date = day ? whenOf(day, L) : sortieDate(L);   // реальная дата тренировки (с переносами)
     const rows = [
       ...(day && !L.replaced ? day.items.map((it, i) => it.type === "ex" && (String(L.items?.[i]?.sub || "").trim()
         ? [{ name: L.items[i].sub, weight: "" }, L.items[i], { sets: 0, target: null, unit: parsePlan(it).unit }]
@@ -94,7 +94,7 @@ export function yearStats(logs, sum, today) {
   for (const d of DAYS) {
     const L = logs[d.date];
     if (isCardio(d)) {
-      if (L && (L.finished || L.items?.some(x => x.done))) cal[d.on] = "cardio";
+      if (L && (L.finished || L.items?.some(x => x.done))) cal[whenOf(d, L)] = "cardio";
       else if (!isOptional(d)) cal[d.on] ||= "plan";
       continue;
     }
@@ -124,10 +124,10 @@ export function yearStats(logs, sum, today) {
   const bestXp = top(p => p.xp), bestOver = top(p => p.battle.hp ? p.battle.over / p.battle.hp : 0), bestCrit = top(p => p.prs || 0);
   // Хронология больших побед: боссы, вожаки, боссы событий.
   const big = days.filter(([d, p]) => { const m = monsterFor(DAY_BY_DATE[d]); return p.battle.killed && m && (m.boss || m.chief || m.event); })
-    .map(([d, p]) => ({ date: DAY_BY_DATE[d].on, name: monsterFor(DAY_BY_DATE[d]).name, xp: p.xp })).sort((a, b) => (a.date < b.date ? -1 : 1));
+    .map(([d, p]) => ({ date: whenOf(DAY_BY_DATE[d], logs[d]), name: monsterFor(DAY_BY_DATE[d]).name, xp: p.xp })).sort((a, b) => (a.date < b.date ? -1 : 1));
   const families = FAMILY.map(([k, name]) => ({ name, n: Object.entries(sum.killed).filter(([id]) => id.startsWith(k)).reduce((a, [, v]) => a + v, 0) })).filter(f => f.n);
   const wk = weekly(logs, today).filter(w => !w.current);
   const planPct = wk.length ? wk.reduce((a, w) => a + Math.min(w.pct, 1), 0) / wk.length : null;
-  const pick = x => x && { date: DAY_BY_DATE[x[0]].on, name: monsterFor(DAY_BY_DATE[x[0]])?.name || "", ...x[1] };
+  const pick = x => x && { date: whenOf(DAY_BY_DATE[x[0]], logs[x[0]]), name: monsterFor(DAY_BY_DATE[x[0]])?.name || "", ...x[1] };
   return { fights, reps, sets, tonnage: Math.round(tonnage), planPct, records, bestXp: pick(bestXp), bestOver: pick(bestOver), bestCrit: bestCrit && bestCrit[1].prs ? pick(bestCrit) : null, big, families, cal };
 }
