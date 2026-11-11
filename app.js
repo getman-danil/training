@@ -883,11 +883,12 @@ const GEAR_ICON = {
   gloves: '<path d="M7 21 V11 L7 6 Q8 4 9 6 V11 V4 Q10 2 11 4 V11 V3.5 Q12 2 13 3.5 V11 V5 Q14 3 15 5 V13 L17 11 Q19 11 18 13 L15 19 V21 Z"/>',
   ring: '<circle cx="12" cy="14" r="6"/><path d="M10 6 L12 3 L14 6 L12 8 Z"/>',
 };
-// Картинки вещей из Gemini: assets/gear/<семья>-<слот>.webp для малых слотов (своя у каждой семьи),
-// assets/gear/<слот>.webp для главных. Добавленную картинку вписать сюда, иначе остаётся временный значок.
+// Картинки вещей из Gemini: assets/gear/gear-<слот>-<семья>.webp для малых слотов (своя у каждой семьи),
+// assets/gear/gear-<слот>.webp для главных, фигура — assets/gear/hero-doll.webp.
+// Добавленную картинку вписать сюда (имя без .webp), иначе остаётся временный значок.
 const GEAR_IMG = new Set([]);
 const gearIcon = (slot, it) => {
-  const key = it?.family ? `${it.family}-${slot}` : slot;
+  const key = it?.family ? `gear-${slot}-${it.family}` : `gear-${slot}`;
   if (it && GEAR_IMG.has(key)) return `<img src="assets/gear/${key}.webp" alt="" loading="lazy">`;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">${GEAR_ICON[slot]}</svg>`;
 };
@@ -913,7 +914,7 @@ function gearHTML(s) {
   const selSlot = gearSel?.slot || (gearSel?.item && G.itemOf(gearSel.item).slot);
   const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id, it)}</button>`; };
   const col = side => G.SLOTS.filter(sl => sl.side === side).map(cell).join("");
-  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
+  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/hero-doll.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
   // Подсказка к выбранному.
   let tip = `<div class="gtip empty"><span class="k">Снаряжение</span><b>Нажми на слот или вещь в сумке</b><small>Ромбик в углу — малый слот: вещи слабее, зато собираются в комплекты по семьям монстров.</small></div>`;
   if (gearSel?.slot) {
