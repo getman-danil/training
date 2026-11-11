@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "В — махи + объём",
   "performedOn": "2026-11-11",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-11-11T18:50:35.554Z",
   "dayNote": "",
   "items": [
     {
@@ -66,9 +66,11 @@
       "planWeight": "16 кг",
       "weight": "16 кг",
       "reps": [
+        10,
+        10,
         10
       ],
-      "note": ""
+      "note": "Очень тяжело, воздуха не хватает после подходов, приходится по 3 мин между подходами отдыхать."
     },
     {
       "type": "ex",
@@ -89,7 +91,13 @@
       "plan": "5×1 мин",
       "planWeight": "",
       "weight": "",
-      "reps": [],
+      "reps": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
       "note": ""
     },
     {
@@ -102,9 +110,9 @@
   "game": {
     "monster": "Матёрый гоблин-шаман",
     "hp": 1584,
-    "dealt": 1122,
+    "dealt": 1584,
     "overkill": 39,
-    "killed": false
+    "killed": true
   },
-  "updatedAt": 1794421832883
+  "updatedAt": 1794423035555
 }
