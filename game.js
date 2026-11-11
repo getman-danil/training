@@ -399,7 +399,7 @@ export function computePRs(logs) {
           dayBest = Math.max(dayBest, r);
         }
       });
-      if (dayBest) list.push({ date: ord(date), key: date, name: it.name, kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}),
+      if (dayBest) list.push({ date: day ? whenOf(day, L) : ord(date), key: date, name: it.name, kind: newKg ? "kg" : "reps", ...(custom ? { custom: true } : {}),
         text: newKg ? `${li.weight || it.weight}: новый вес, лучший подход ${dayBest}` : `${dayBest} повт. (было ${preReps})` });
       updates.push([key, name, Math.max(...reps), wk]);
     });
@@ -408,6 +408,8 @@ export function computePRs(logs) {
       bestKg[name] = Math.max(bestKg[name] ?? -Infinity, wk);
     }
   }
+  // Порядок подсчёта — по плану, а в списке рекорды идут по реальной дате.
+  list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return { prs, list, bestReps, bestKg };
 }
 
@@ -713,7 +715,7 @@ export function summarize(logs, meta, today) {
       kills++; killed[m.id] = (killed[m.id] || 0) + 1; if (m.boss) bossKills.push(m.id); if (m.elite) eliteKilled[m.id] = (eliteKilled[m.id] || 0) + 1; if (m.event) eventKills.push(d.date); if (isMoon(d)) moonKills++; if (b.over >= b.hp * OVERKILL_CAP) overkills++;
       if (REVENGE[d.date]) { dx += Math.round(XP_REVENGE * (1 + 0.05 * st.wil) * (hasPerk(bd, "grudge") ? 2 : 1)) + (hasPerk(bd, "headhunter") ? 100 : 0) + (hasPerk(bd, "h-revenge") ? 40 : 0); revenges++; }
       // Босс всегда оставляет вещь: редкую или (с шансом) легендарную; «Трофейщик» — всегда легендарную.
-      if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date });
+      if (m?.boss) loot.push({ id: (hasPerk(bd, "trophy") ? "L:" : "b:") + d.date, date: d.date, got: whenOf(d, L) });
     }
     else {
       if (L.finished && b.dealt > 0) fled++;
@@ -723,7 +725,7 @@ export function summarize(logs, meta, today) {
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
     const fc = findChances(rawFind(bd, on("luck", when, fms)));
     if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
-    if (find) { finds++; dx += FIND_XP; loot.push({ id: (hash01(d.date + "#rare") < fc.rare ? "r:" : "c:") + d.date, date: d.date }); }
+    if (find) { finds++; dx += FIND_XP; loot.push({ id: (hash01(d.date + "#rare") < fc.rare ? "r:" : "c:") + d.date, date: d.date, got: whenOf(d, L) }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1) * (hasPerk(bd, "u-tavern") ? 2 : 1); }
     let mul = hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1;
@@ -771,7 +773,7 @@ export function summarize(logs, meta, today) {
   const shop = meta?.shop?.log || [], used = new Set(shop.flatMap(e => e.use || []));
   const spentGold = shop.reduce((a, e) => a + (e.cost || 0), 0);
   for (const e of shop) loot.push({ id: e.id, date: e.at });
-  const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.date }));
+  const inventory = loot.filter(x => !used.has(x.id)).map(x => ({ ...itemOf(x.id), date: x.got || x.date })).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);   // дата — когда вещь реально получена (с учётом переносов), id — по дате плана
   const forged = shop.filter(e => e.act === "forge").length, mythics = shop.filter(e => e.act === "mythic").length;
   const findNow = findChances(rawFind(build, on("luck", today)));
   const ach = achievements({ forged, mythics, bought: shop.filter(e => e.act === "buy").length, revenges, kills, fled, cardio, prCount: prList.filter(p => !p.custom).length, streakBest: sk.best, bossKills, killed, eliteKilled, eventKills, moonKills, overkills, nightOwl, logs, level: lv.level, weeks: sk.weeks, finds, build, inventory });
