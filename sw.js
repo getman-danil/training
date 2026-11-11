@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v34";
+const VERSION = "v35";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -74,7 +74,52 @@ const FILES = [
   "assets/icons/apple-180.png",
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",
-  "assets/icons/maskable-512.png"
+  "assets/icons/maskable-512.png",
+  "assets/gear/gear-amulet.webp",
+  "assets/gear/gear-armor.webp",
+  "assets/gear/gear-boots-demon.webp",
+  "assets/gear/gear-boots-dragon.webp",
+  "assets/gear/gear-boots-goblin.webp",
+  "assets/gear/gear-boots-lizard.webp",
+  "assets/gear/gear-boots-minotaur.webp",
+  "assets/gear/gear-boots-orc.webp",
+  "assets/gear/gear-boots-treant.webp",
+  "assets/gear/gear-boots-undead.webp",
+  "assets/gear/gear-cloak-demon.webp",
+  "assets/gear/gear-cloak-dragon.webp",
+  "assets/gear/gear-cloak-goblin.webp",
+  "assets/gear/gear-cloak-lizard.webp",
+  "assets/gear/gear-cloak-minotaur.webp",
+  "assets/gear/gear-cloak-orc.webp",
+  "assets/gear/gear-cloak-treant.webp",
+  "assets/gear/gear-cloak-undead.webp",
+  "assets/gear/gear-gloves-demon.webp",
+  "assets/gear/gear-gloves-dragon.webp",
+  "assets/gear/gear-gloves-goblin.webp",
+  "assets/gear/gear-gloves-lizard.webp",
+  "assets/gear/gear-gloves-minotaur.webp",
+  "assets/gear/gear-gloves-orc.webp",
+  "assets/gear/gear-gloves-treant.webp",
+  "assets/gear/gear-gloves-undead.webp",
+  "assets/gear/gear-helm-demon.webp",
+  "assets/gear/gear-helm-dragon.webp",
+  "assets/gear/gear-helm-goblin.webp",
+  "assets/gear/gear-helm-lizard.webp",
+  "assets/gear/gear-helm-minotaur.webp",
+  "assets/gear/gear-helm-orc.webp",
+  "assets/gear/gear-helm-treant.webp",
+  "assets/gear/gear-helm-undead.webp",
+  "assets/gear/gear-ring.webp",
+  "assets/gear/gear-shield-demon.webp",
+  "assets/gear/gear-shield-dragon.webp",
+  "assets/gear/gear-shield-goblin.webp",
+  "assets/gear/gear-shield-lizard.webp",
+  "assets/gear/gear-shield-minotaur.webp",
+  "assets/gear/gear-shield-orc.webp",
+  "assets/gear/gear-shield-treant.webp",
+  "assets/gear/gear-shield-undead.webp",
+  "assets/gear/gear-weapon.webp",
+  "assets/gear/hero-doll.webp"
 ];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

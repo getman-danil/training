@@ -432,7 +432,7 @@ export const FIND_XP = 80, FIND_CHANCE = 0.06, FIND_MAX = 0.6;
 // Редкая находка: +2 к характеристикам, узел древа — только с шансом 12%. Легендарки с находок не падают.
 export const RARE_FIND_K = 0.5, RARE_FIND_MAX = 0.3, RARE_FIND_NODE = 0.12;
 export function rawFind(bd, luckBuff) {
-  return FIND_CHANCE * bd.stats.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + (hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0) + (luckBuff ? BUFFS.luck.val : 0) + (hasPerk(bd, "h-find") ? 0.03 : 0);
+  return FIND_CHANCE * bd.stats.lck * (hasPerk(bd, "seeker") ? 1.75 : 1) + (hasPerk(bd, "myth-find") ? 0.15 : hasPerk(bd, "leg-find") ? 0.1 : 0) + (luckBuff ? BUFFS.luck.val : 0) + (hasPerk(bd, "h-find") ? 0.03 : 0) + (hasPerk(bd, "sl-cloak") ? 0.05 : 0);
 }
 export function findChances(raw) { return { find: Math.min(FIND_MAX, raw), rare: Math.min(RARE_FIND_MAX, Math.max(0, raw - FIND_MAX) * RARE_FIND_K) }; }
 
@@ -477,7 +477,61 @@ export function canTakeNode(nodes, id) {
 }
 
 // ---------- снаряжение ----------
-export const SLOTS = [{ id: "weapon", name: "Оружие" }, { id: "armor", name: "Броня" }, { id: "amulet", name: "Амулет" }, { id: "ring", name: "Кольцо" }];
+// Кукла героя: 9 слотов. Слева то, что надето на тело, справа то, что в руках (решено с Даниэлем 11.11).
+// Главные слоты — прежние четыре: в них падают боссы, легендарки и мифические. Малые слоты (small) появились 11.11:
+// вещи в них слабее, принадлежат семье монстров и собираются в комплекты.
+export const SLOTS = [
+  { id: "helm", name: "Шлем", small: true, side: "L" }, { id: "amulet", name: "Амулет", side: "L" }, { id: "cloak", name: "Плащ", small: true, side: "L" },
+  { id: "armor", name: "Броня", side: "L" }, { id: "boots", name: "Сапоги", small: true, side: "L" },
+  { id: "weapon", name: "Оружие", side: "R" }, { id: "shield", name: "Щит", small: true, side: "R" }, { id: "gloves", name: "Перчатки", small: true, side: "R" },
+  { id: "ring", name: "Кольцо", side: "R" },
+];
+export const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
+// Порядок важен: по нему id вещи выбирает слот, поэтому старые вещи остаются там, где были.
+export const MAIN_SLOTS = ["weapon", "armor", "amulet", "ring"].map(id => SLOT_BY_ID[id]);
+export const SMALL_SLOTS = SLOTS.filter(s => s.small);
+// С этой даты плана находки могут лечь в любой из 9 слотов. Всё, что выпало раньше, остаётся в главных слотах.
+export const GEAR9_FROM = "2026-11-13";
+// Семьи монстров для комплектов малых слотов.
+export const FAMILIES = {
+  goblin: { name: "Гоблины", set: "Логово гоблинов", m: "Гоблинский", pl: "Гоблинские", gen: "гоблинов" },
+  orc: { name: "Орки", set: "Орда", m: "Орочий", pl: "Орочьи", gen: "орды" },
+  undead: { name: "Нежить", set: "Склеп", m: "Костяной", pl: "Костяные", gen: "склепа" },
+  dragon: { name: "Драконы", set: "Драконье гнездо", m: "Драконий", pl: "Драконьи", gen: "драконов" },
+  demon: { name: "Демоны", set: "Преисподняя", m: "Адский", pl: "Адские", gen: "преисподней" },
+  treant: { name: "Энты", set: "Чаща", m: "Древесный", pl: "Древесные", gen: "чащи" },
+  minotaur: { name: "Минотавры", set: "Лабиринт", m: "Рогатый", pl: "Рогатые", gen: "лабиринта" },
+  lizard: { name: "Ящеры", set: "Болото", m: "Чешуйчатый", pl: "Чешуйчатые", gen: "болот" },
+};
+export const FAMILY_KEYS = Object.keys(FAMILIES);
+export function familyOfMonster(id) {
+  if (!id) return null;
+  if (id.includes("lich")) return "undead";
+  return FAMILY_KEYS.find(k => id.includes(k)) || null;
+}
+// Комплект: 2 вещи одной семьи — +10% опыта за бои с ней, 4 вещи — ещё +10% опыта, +15% золота и +5% к шансу находки в этих боях.
+// Каждая редкая и малая легендарная вещь сверх того даёт +FAM_XP опыта за бои со своей семьёй.
+export const SET2_XP = 0.1, SET4_XP = 0.1, SET4_GOLD = 0.15, SET4_FIND = 0.05, FAM_XP = 0.04;
+export function setCounts(eq) {
+  const c = {}, xp = {};
+  for (const id of Object.values(eq || {})) {
+    if (!id) continue; const it = itemOf(id); if (!it.family) continue;
+    c[it.family] = (c[it.family] || 0) + 1;
+    if (it.rarity !== "common") xp[it.family] = (xp[it.family] || 0) + FAM_XP;
+  }
+  return { n: c, xp };
+}
+const SMALL_NOUN = { helm: ["m", "шлем"], cloak: ["m", "плащ"], shield: ["m", "щит"], gloves: ["pl", "перчатки"], boots: ["pl", "сапоги"] };
+// Малые легендарки куются из редкой вещи малого слота. Эффект примерно вдвое слабее, чем у легендарки главного слота
+// (замерено симуляцией идеального года: легендарка главного слота ≈ 900 опыта за год сверх характеристики, малая ≈ 400–600).
+export const SMALL_LEGENDARY = {
+  helm: { name: "Венец", fx: "sl-helm", desc: "+1,5% всего опыта за бои" },
+  cloak: { name: "Покров", fx: "sl-cloak", desc: "+5% к шансу находки" },
+  shield: { name: "Эгида", fx: "sl-shield", desc: "опыт за боссов ×1,25" },
+  gloves: { name: "Длани", fx: "sl-gloves", desc: "+15% золота" },
+  boots: { name: "Поступь", fx: "sl-boots", desc: "+30% опыта за патрули" },
+};
+export const SMALL_LEG_COST = 100;
 const ITEM_NAMES = {
   common: { weapon: ["Ржавый тесак", "Гоблинский нож", "Дубина стража", "Короткий меч"], armor: ["Кожаный доспех", "Стёганка", "Кольчуга дозорного"], amulet: ["Костяной оберег", "Медный амулет", "Клык на шнурке"], ring: ["Железное кольцо", "Кольцо дозорного", "Медный перстень"] },
   rare: { weapon: ["Клинок пепла", "Секира вожака"], armor: ["Латы стража склепа", "Панцирь берсерка"], amulet: ["Око шамана", "Череп-талисман"], ring: ["Печать вожака", "Кольцо призрака"] },
@@ -515,7 +569,7 @@ export const UNIQUE_FX = {
 // ---------- золото, торговец, кузница ----------
 // Золото дают бои: за убийство целиком, за сбежавшего монстра — FLED_GOLD от него, умноженное на долю урона.
 // Перебор, рекорды и патрули золота не дают.
-// meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic", id: новая вещь, use: [id израсходованных], cost }] }
+// meta.shop = { log: [{ at, act: "buy" | "forge" | "mythic" | "smallleg", id: новая вещь, use: [id израсходованных], cost }] }
 export const GOLD_KILL = 10, GOLD_BOSS = 60, FLED_GOLD = 0.5;
 export const PRICE_COMMON = 50, FORGE_FEE = 30, MYTHIC_COST = 800;
 export const isFair = iso => !!iso && FAIR_WEEKS.has(weekOf(iso).n);
@@ -524,9 +578,28 @@ const pick = (arr, key) => arr[Math.floor(hash01(key) * arr.length) % arr.length
 // Вещь целиком выводится из своего id, поэтому одинакова на всех устройствах и ничего не хранится, кроме id.
 // id: "c:<дата>" — находка в обычном бою, "b:<дата>" — добыча с босса, "L:<дата>" — гарантированная легенда («Трофейщик»),
 // "s:<слот>:<хар>:<n>" — куплена у торговца, "f:<слот>:<хар>:<хар>:<n>" — скована из двух обычных, "M:<id легендарки>" — мифическая.
+// Малые слоты: "s:<слот>:<хар>:<n>:<семья>", "f:<слот>:<хар>:<хар>:<n>:<семья>", "S:<id редкой>" — малая легендарка из кузницы.
 const FORGED = { weapon: "Кованый клинок", armor: "Кованая кираса", amulet: "Кованый оберег", ring: "Кованый перстень" };
+// Семья вещи из находки — семья монстров подземелья, где шёл бой (по плану, без реванша и событий: так она не меняется).
+function familyOfDate(iso) {
+  const d = DAY_BY_DATE[iso];
+  let f = null;
+  try { f = d && familyOfMonster(planMonster(d)?.id); } catch { f = null; }
+  return f || pick(FAMILY_KEYS, iso + "#fam");
+}
+const smallName = (slot, fam) => { const [g, noun] = SMALL_NOUN[slot]; return `${FAMILIES[fam][g]} ${noun}`; };
+// Вещь малого слота: всегда +1 к характеристике. Редкая ещё даёт опыт за бои со своей семьёй, малая легендарка — и свой эффект.
+function smallItem(id, slot, rarity, stats, fam, extra = {}) {
+  const st = Object.keys(stats);
+  const name = rarity === "common" ? `${smallName(slot, fam)} ${STAT_BY_ID[st[0]].gen}` : smallName(slot, fam);
+  return { id, slot, small: true, family: fam, rarity, name, stats, nodes: [], ...extra };
+}
 export function itemOf(id) {
   const [src, ...p] = id.split(":");
+  if (src === "S") {
+    const base = itemOf(id.slice(2)), L = SMALL_LEGENDARY[base.slot];
+    return { ...base, id, rarity: "legendary", name: `${L.name} ${FAMILIES[base.family].gen}`, nodes: [L.fx], desc: L.desc, from: base.id, forged: false };
+  }
   if (src === "M") {
     const base = itemOf(id.slice(2)), My = MYTHIC[base.slot], stat = Object.keys(base.stats)[0];
     return { id, slot: base.slot, rarity: "mythic", name: My.name, stats: { [stat]: 5 }, nodes: [My.fx], desc: My.desc, from: base.id };
@@ -537,10 +610,16 @@ export function itemOf(id) {
   }
   if (src === "f") {
     const stats = {}; for (const s of [p[1], p[2]]) stats[s] = (stats[s] || 0) + 1;
+    if (SLOT_BY_ID[p[0]]?.small) return smallItem(id, p[0], "rare", { [p[1]]: 1 }, p[4], { forged: true });
     return { id, slot: p[0], rarity: "rare", forged: true, name: `${FORGED[p[0]]} ${STAT_BY_ID[p[1]].gen}`, stats, nodes: [] };
   }
-  const slot = src === "s" ? p[0] : pick(SLOTS, id + "#slot").id;
+  // Боссы и старые находки — только главные слоты; находки с GEAR9_FROM — любой из 9.
+  const slot = src === "s" ? p[0] : pick((src === "c" || src === "r") && p[0] >= GEAR9_FROM ? SLOTS : MAIN_SLOTS, id + "#slot").id;
   const stat = src === "s" ? p[1] : pick(STATS, id + "#stat").id;
+  if (SLOT_BY_ID[slot].small) {
+    const fam = src === "s" ? p[3] : familyOfDate(p[0]);
+    return smallItem(id, slot, src === "c" || src === "s" ? "common" : "rare", { [stat]: 1 }, fam);
+  }
   if (src === "c" || src === "s") return { id, slot, rarity: "common", name: `${pick(ITEM_NAMES.common[slot], id + "#name")} ${STAT_BY_ID[stat].gen}`, stats: { [stat]: 1 }, nodes: [] };
   if (src === "L" || (src === "b" && hash01(id + "#leg") < LEGENDARY_CHANCE)) {
     const L = LEGENDARY[slot];
@@ -556,7 +635,9 @@ export function itemOf(id) {
 export function itemText(it) {
   const parts = Object.entries(it.stats).map(([s, v]) => `+${v} ${STAT_BY_ID[s].name}`);
   for (const n of it.nodes) parts.push(NODE_BY_ID[n] ? `узел «${NODE_BY_ID[n].name}»` : UNIQUE_FX[n] || it.desc);
-  if (it.forged || it.noNode) parts.push("без узла");
+  if ((it.forged || it.noNode) && !it.small) parts.push("без узла");
+  if (it.family && it.rarity !== "common") parts.push(`+${FAM_XP * 100}% опыта за бои: ${FAMILIES[it.family].name.toLowerCase()}`);
+  if (it.family) parts.push(`комплект «${FAMILIES[it.family].set}»`);
   return parts.join(", ");
 }
 
@@ -586,7 +667,7 @@ export function buildAt(meta, iso, ms) {
   for (const id of Object.values(eq)) { if (!id) continue; const it = itemOf(id); for (const [s, v] of Object.entries(it.stats)) stats[s] += v; it.nodes.forEach(n => nodes.add(n)); }
   for (const n of nodes) if (NODE_BY_ID[n]?.kind === "small") stats[NODE_BY_ID[n].stat]++;
   const h = honorAt(meta, iso, ms); if (h) nodes.add(HONOR[h].fx);
-  return { stats, nodes: [...nodes], alloc: a, eq };
+  return { stats, nodes: [...nodes], alloc: a, eq, sets: setCounts(eq) };
 }
 export function currentBuild(meta) { return buildAt(meta, "9999-12-31"); }
 export function hasPerk(b, id) { return b.nodes.includes(id); }
@@ -675,7 +756,7 @@ export function summarize(logs, meta, today) {
     const fms = fightMs(d, L), bd = buildAt(meta, whenOf(d, L), fms), st = bd.stats;
     if (isCardio(d)) {
       if (L.items?.some(x => x.done) || L.finished) {
-        const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end + (hasPerk(bd, "u-patrol") ? 0.2 : 0) + (hasPerk(bd, "h-patrol") ? 0.3 : 0)) * (hasPerk(bd, "marathon") ? 1.75 : 1));
+        const cx = Math.round(XP_CARDIO * (1 + 0.11 * st.end + (hasPerk(bd, "u-patrol") ? 0.2 : 0) + (hasPerk(bd, "h-patrol") ? 0.3 : 0) + (hasPerk(bd, "sl-boots") ? 0.3 : 0)) * (hasPerk(bd, "marathon") ? 1.75 : 1));
         xp += cx; cardio++; perDay[d.date] = { xp: cx };
       }
       continue;
@@ -687,7 +768,9 @@ export function summarize(logs, meta, today) {
     const heavyShare = allHp ? heavyHp / allHp : 0;
     const statMul = 1 + heavyShare * (0.095 * st.str + (hasPerk(bd, "breaker") ? 0.3 : 0)) + (1 - heavyShare) * 0.07 * st.end;
     let dx = Math.round((b.dealt + b.overXp) / b.mult * XP_PER_HP * statMul * mod);
-    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) * (hasPerk(bd, "u-boss") ? 1.1 : 1) * (hasPerk(bd, "h-boss") ? 1.25 : 1) : 1;
+    const bossMul = m?.boss ? (hasPerk(bd, "executioner") ? 2 : 1) * (hasPerk(bd, "myth-boss") ? 2 : hasPerk(bd, "leg-boss") ? 1.5 : 1) * (hasPerk(bd, "u-boss") ? 1.1 : 1) * (hasPerk(bd, "h-boss") ? 1.25 : 1) * (hasPerk(bd, "sl-shield") ? 1.25 : 1) : 1;
+    // Комплект семьи, с которой идёт бой.
+    const fam = familyOfMonster(m?.id), setN = bd.sets?.n[fam] || 0, famXp = bd.sets?.xp[fam] || 0;
     const dayPRs = Object.entries(prs[d.date] || {}).filter(([, pr]) => !pr.custom);
     const nPR = dayPRs.length;
     dayPRs.forEach(([, pr], k) => {
@@ -703,7 +786,7 @@ export function summarize(logs, meta, today) {
     let find = 0, dg = 0;
     const when = whenOf(d, L);
     // Дробные монеты копятся: иначе +4% к 10 золотым терялись бы при округлении.
-    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (on("gold", when, fms) ? BUFFS.gold.val : 0));
+    const goldFull = (m?.boss ? GOLD_BOSS : GOLD_KILL) * (m?.elite ? ELITE_GOLD : 1) * (m?.event ? EVENT_GOLD : 1) * (1 + 0.04 * st.lck + (hasPerk(bd, "goldvein") ? 0.25 : 0) + (hasPerk(bd, "u-gold") ? 0.1 : 0) + (hasPerk(bd, "sl-gloves") ? 0.15 : 0) + (setN >= 4 ? SET4_GOLD : 0) + (on("gold", when, fms) ? BUFFS.gold.val : 0));
     if (b.killed) {
       dg = Math.floor(gold + goldFull) - Math.floor(gold); gold += goldFull;
       let kx = XP_KILL * (m?.boss ? 3 : 1) * bossMul * (1 + (hasPerk(bd, "crusher") ? 0.12 : 0) + (hasPerk(bd, "unbroken") ? 0.2 : 0) + (hasPerk(bd, "stoic") ? 0.1 : 0) + (hasPerk(bd, "grudge") ? 0.1 : 0) + (hasPerk(bd, "headhunter") ? 0.18 : 0) + (hasPerk(bd, "u-kill") ? 0.08 : 0) + (hasPerk(bd, "h-slayer") ? 0.04 : 0)) * (1 + 0.055 * st.wil);
@@ -723,12 +806,12 @@ export function summarize(logs, meta, today) {
       if (fledOn(d, L, today)) { const g = goldFull * FLED_GOLD * b.pct; dg = Math.floor(gold + g) - Math.floor(gold); gold += g; }
     }
     // Находка: удача проверяется детерминированно по дате, поэтому на всех устройствах одинаково.
-    const fc = findChances(rawFind(bd, on("luck", when, fms)));
+    const fc = findChances(rawFind(bd, on("luck", when, fms)) + (setN >= 4 ? SET4_FIND : 0));
     if (b.dealt > 0 && hash01(d.date) < fc.find) find = 1;
     if (find) { finds++; dx += FIND_XP; loot.push({ id: (hash01(d.date + "#rare") < fc.rare ? "r:" : "c:") + d.date, date: d.date, got: whenOf(d, L) }); }
     // Бодрость после таверны: первый бой недели после разгрузки даёт бонус.
     if (b.dealt > 0 && TAVERN_WEEKS.has(d.week - 1) && !tavernBuffWeeks.has(d.week)) { tavernBuffWeeks.add(d.week); dx += XP_TAVERN_BUFF * (hasPerk(bd, "secondwind") ? 5 : 1) * (hasPerk(bd, "u-tavern") ? 2 : 1); }
-    let mul = hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1;
+    let mul = (hasPerk(bd, "myth-xp") ? 1.08 : hasPerk(bd, "leg-xp") ? 1.05 : 1) + (hasPerk(bd, "sl-helm") ? 0.015 : 0) + (setN >= 2 ? SET2_XP : 0) + (setN >= 4 ? SET4_XP : 0) + famXp;
     if (b.dealt > 0 && !weekFirst.has(d.week)) { weekFirst.add(d.week); if (hasPerk(bd, "u-week")) mul += 0.06; }
     const late = L.finishedAt && L.performedOn === L.finishedAt.slice(0, 10) && new Date(L.finishedAt).getHours() >= NIGHT_HOUR;
     if (late && hasPerk(bd, "h-night")) mul += 0.2;
@@ -837,7 +920,7 @@ export function achievements(s) {
     A("lvl5", "Закалённый", "Достичь 5 уровня", s.level >= 5),
     A("lvl10", "Живая легенда", "Достичь 10 уровня", s.level >= 10),
     A("perk1", "Свой путь", "Открыть первый большой узел древа", s.build.alloc.nodes.some(n => NODE_BY_ID[n]?.kind !== "small")),
-    A("legend", "Легендарная добыча", "Получить легендарную вещь", s.inventory.some(i => i.rarity === "legendary")),
+    A("legend", "Легендарная добыча", "Получить легендарную вещь", s.inventory.some(i => i.rarity === "legendary" && !i.small)),
     A("find5", "Мародёр", "Сделать 5 находок", s.finds >= 5),
     A("buy1", "Покупатель", "Купить вещь у торговца", s.bought >= 1),
     A("forge1", "Кузнец", "Сковать редкую вещь", s.forged >= 1),

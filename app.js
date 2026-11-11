@@ -761,7 +761,7 @@ function renderHero() {
   <h2 class="sec">КАК КАЧАЕТСЯ ГЕРОЙ</h2><div class="help">
   <p>Здоровье монстра = плановый объём дня: каждый плановый подход отнимает свою долю. Выполнил всё — монстр повержен (+${G.XP_KILL} опыта, босс ×3).</p>
   <p>У монстров есть уровень: он растёт по ходу плана вместе со здоровьем (+${Math.round(G.HP_PER_LVL * 100)}% за уровень, у боссов ещё ×${G.BOSS_HP}). Уровень монстра — это уровень героя, который идёт ровно по плану, ±1 по месту в стае. Монстр выше тебя даёт больше опыта (до +${Math.round((G.LVL_XP_MAX - 1) * 100)}%), ниже — меньше (до −${Math.round((1 - G.LVL_XP_MIN) * 100)}%): отстал — догонишь быстрее. Убить всё равно можно только выполнив план целиком.</p>
-  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: за сбежавшего — половина от этого, умноженная на долю урона; у торговца на золото покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд, снаряжение и почётный титул действуют на бои, законченные после того, как ты их поменял: на уже проведённые не влияют.</p>
+  <p>За каждый уровень — очко характеристики и очко навыка, за босса — ещё очко характеристики. У каждой характеристики своя ветка древа: малые узлы дают +1 к ней, большие — особые эффекты. Вещи падают с находок и боссов и дают характеристики или узлы древа. У героя 9 слотов: 4 главных (оружие, броня, амулет, кольцо) и 5 малых (шлем, плащ, сапоги, щит, перчатки). Боссы роняют вещи только в главные слоты. Вещь малого слота всегда даёт +1 к характеристике и принадлежит семье монстров: 2 вещи одной семьи — +${G.SET2_XP * 100}% опыта в боях с ней, 4 — ещё +${G.SET4_XP * 100}% опыта, +${G.SET4_GOLD * 100}% золота и +${G.SET4_FIND * 100}% к находке. Редкую вещь малого слота кузнец улучшает до малой легендарки. За каждое убийство — ${G.GOLD_KILL} золота, за босса ${G.GOLD_BOSS}: за сбежавшего — половина от этого, умноженная на долю урона; у торговца на золото покупаются обычные вещи, в кузнице из двух обычных одного слота куётся редкая, а легендарку можно пробудить до мифической. Билд, снаряжение и почётный титул действуют на бои, законченные после того, как ты их поменял: на уже проведённые не влияют.</p>
   <p>Перевыполнение даёт бонусный опыт, но не больше +20% здоровья монстра. Личный рекорд — критический удар (+${G.XP_PR}). Не добил — монстр сбегает раненым, опыт за урон остаётся.</p>
   <p>Если вес не как в плане, урон пересчитывается: повтор стоит пропорционально поднятой нагрузке. В упражнениях со своим весом нагрузка = вес тела + отягощение − резинка (вес тела — в настройках). Без резинки 5 подтягиваний могут убить монстра, рассчитанного на 6 с резинкой.</p>
   <p>Реванш: сбежавший монстр приходит вместо монстра следующей обычной тренировки (если она в течение ${G.REVENGE_WINDOW} дней). Добил — убийство засчитывается, в том числе за день, когда он сбежал, и +${G.XP_REVENGE} опыта сверху. Сбежал второй раз — ушёл насовсем.</p>
@@ -871,54 +871,125 @@ const RARITY = { common: "обычная", rare: "редкая", unique: "уни
 // Активные бафы: «Вдохновение — ещё 5 дн.»; если баф начнётся позже (продление очереди), показываем дату.
 const buffsText = s => s.buffs.length ? ` ${s.buffs.map(b => `<b class="gold">${esc(b.name)}</b> ${b.from > todayISO() ? `с ${fmt(b.from)}` : `ещё ${b.left} дн.`}`).join(", ")}` : "";
 const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+// Значки слотов: временные, пока нет картинок из Firefly. Цвет даёт рамка редкости.
+const GEAR_ICON = {
+  helm: '<path d="M5 15 Q5 4 12 4 Q19 4 19 15 L17 20 H7 Z M8 12 H16 M12 12 V18"/>',
+  amulet: '<path d="M6 3 Q12 12 18 3"/><path d="M12 10 L16 15 L12 21 L8 15 Z"/>',
+  cloak: '<path d="M8 3 H16 L20 21 Q12 18 4 21 Z M12 3 V8"/>',
+  armor: '<path d="M5 6 L9 3 Q12 5 15 3 L19 6 L18 12 L17 21 H7 L6 12 Z M9 10 H15 M9 14 H15"/>',
+  boots: '<path d="M7 3 H13 V14 L20 16 V21 H5 V14 Z M7 9 H13"/>',
+  weapon: '<path d="M6 18 L17 4 L20 4 L20 7 L6 18 M5 15 L9 19 M4 20 L6 18"/>',
+  shield: '<path d="M5 4 H19 V11 Q19 18 12 21 Q5 18 5 11 Z M12 4 V21 M5 10 H19"/>',
+  gloves: '<path d="M7 21 V11 L7 6 Q8 4 9 6 V11 V4 Q10 2 11 4 V11 V3.5 Q12 2 13 3.5 V11 V5 Q14 3 15 5 V13 L17 11 Q19 11 18 13 L15 19 V21 Z"/>',
+  ring: '<circle cx="12" cy="14" r="6"/><path d="M10 6 L12 3 L14 6 L12 8 Z"/>',
+};
+// Картинки вещей из Gemini: assets/gear/gear-<слот>-<семья>.webp для малых слотов (своя у каждой семьи),
+// assets/gear/gear-<слот>.webp для главных, фигура — assets/gear/hero-doll.webp.
+// Добавленную картинку вписать сюда (имя без .webp), иначе остаётся временный значок.
+const GEAR_IMG = new Set(["gear-amulet", "gear-armor", "gear-boots-demon", "gear-boots-dragon", "gear-boots-goblin", "gear-boots-lizard", "gear-boots-minotaur", "gear-boots-orc", "gear-boots-treant", "gear-boots-undead", "gear-cloak-demon", "gear-cloak-dragon", "gear-cloak-goblin", "gear-cloak-lizard", "gear-cloak-minotaur", "gear-cloak-orc", "gear-cloak-treant", "gear-cloak-undead", "gear-gloves-demon", "gear-gloves-dragon", "gear-gloves-goblin", "gear-gloves-lizard", "gear-gloves-minotaur", "gear-gloves-orc", "gear-gloves-treant", "gear-gloves-undead", "gear-helm-demon", "gear-helm-dragon", "gear-helm-goblin", "gear-helm-lizard", "gear-helm-minotaur", "gear-helm-orc", "gear-helm-treant", "gear-helm-undead", "gear-ring", "gear-shield-demon", "gear-shield-dragon", "gear-shield-goblin", "gear-shield-lizard", "gear-shield-minotaur", "gear-shield-orc", "gear-shield-treant", "gear-shield-undead", "gear-weapon", "hero-doll"]);
+const gearIcon = (slot, it) => {
+  const key = it?.family ? `gear-${slot}-${it.family}` : `gear-${slot}`;
+  if (it && GEAR_IMG.has(key)) return `<img src="assets/gear/${key}.webp" alt="" loading="lazy">`;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">${GEAR_ICON[slot]}</svg>`;
+};
+const HERO_FIG = `<svg viewBox="0 0 200 320" aria-hidden="true"><defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a342a"/><stop offset="1" stop-color="#1a1713"/></linearGradient></defs>
+<path d="M58 92 L40 300 L160 300 L142 92 Z" fill="#17140f" stroke="#2e2b25"/><rect x="78" y="200" width="18" height="86" fill="url(#hg)" stroke="#5a5244"/><rect x="104" y="200" width="18" height="86" fill="url(#hg)" stroke="#5a5244"/>
+<path d="M72 284 h26 v12 h-28 z M102 284 h26 v12 h-28 z" fill="#2a251d" stroke="#5a5244"/><path d="M70 92 Q100 82 130 92 L136 150 L126 206 L74 206 L64 150 Z" fill="url(#hg)" stroke="#5a5244"/>
+<path d="M84 112 Q100 104 116 112 M82 132 Q100 124 118 132 M84 152 Q100 144 116 152" fill="none" stroke="#5a5244"/><rect x="72" y="176" width="56" height="9" fill="#2a251d" stroke="#5a5244"/>
+<path d="M70 96 L50 120 L46 182 L58 184 L64 128 Z" fill="url(#hg)" stroke="#5a5244"/><path d="M130 96 L150 120 L154 182 L142 184 L136 128 Z" fill="url(#hg)" stroke="#5a5244"/>
+<path d="M52 186 L46 66 L52 52 L58 66 Z" fill="#2a2621" stroke="#c9a24a" stroke-width="1.2"/><rect x="40" y="184" width="24" height="5" fill="#5a5244"/>
+<path d="M140 130 h36 v34 q0 26 -18 38 q-18 -12 -18 -38 z" fill="#1d1a15" stroke="#5a5244" stroke-width="1.4"/><path d="M158 140 v54 M146 160 h24" stroke="#3a342a" stroke-width="3"/>
+<path d="M80 54 Q80 22 100 20 Q120 22 120 54 L118 80 Q100 90 82 80 Z" fill="url(#hg)" stroke="#5a5244"/><path d="M86 52 h28 M100 52 v22" stroke="#0b0a09" stroke-width="4"/><path d="M100 20 Q104 8 98 2" fill="none" stroke="#8e1a12" stroke-width="3"/></svg>`;
+// Что выбрано на кукле: слот (data-gslot) или вещь в сумке (data-gitem).
+let gearSel = null;
+const slotName = id => G.SLOT_BY_ID[id].name;
+function statDiff(a, b) {
+  const d = {}; for (const [k, v] of Object.entries(a?.stats || {})) d[k] = (d[k] || 0) + v; for (const [k, v] of Object.entries(b?.stats || {})) d[k] = (d[k] || 0) - v;
+  return Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : "−"}${Math.abs(v)} ${G.STAT_BY_ID[k].name}`).join(", ");
+}
 function gearHTML(s) {
-  const eq = s.build.eq, inv = s.inventory;
-  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="slots">${G.SLOTS.map(sl => {
-    const it = eq[sl.id] && G.itemOf(eq[sl.id]);
-    return `<div class="slot ${it ? it.rarity : "empty"}"><span>${sl.name}</span>${it ? `<b>${esc(it.name)}</b><small>${esc(G.itemText(it))}</small><button class="ghostbtn" data-unequip="${sl.id}">снять</button>` : "<b>пусто</b>"}</div>`;
-  }).join("")}</div>`;
+  const eq = s.build.eq, inv = s.inventory, worn = new Set(Object.values(eq));
+  const bag = inv.filter(it => !worn.has(it.id)).reverse();
+  if (gearSel?.item && !bag.some(it => it.id === gearSel.item)) gearSel = null;
+  const selSlot = gearSel?.slot || (gearSel?.item && G.itemOf(gearSel.item).slot);
+  const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id, it)}</button>`; };
+  const col = side => G.SLOTS.filter(sl => sl.side === side).map(cell).join("");
+  let h = `<h2 class="sec">СНАРЯЖЕНИЕ</h2><div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/hero-doll.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
+  // Подсказка к выбранному.
+  let tip = `<div class="gtip empty"><span class="k">Снаряжение</span><b>Нажми на слот или вещь в сумке</b><small>Ромбик в углу — малый слот: вещи слабее, зато собираются в комплекты по семьям монстров.</small></div>`;
+  if (gearSel?.slot) {
+    const sl = G.SLOT_BY_ID[gearSel.slot], it = eq[sl.id] && G.itemOf(eq[sl.id]), kind = sl.small ? "малый слот" : "главный слот";
+    tip = it ? `<div class="gtip ${it.rarity}"><span class="k">${sl.name} · ${kind} · ${RARITY[it.rarity]}</span><b>${esc(it.name)}</b><small>${esc(G.itemText(it))}</small><button class="ghostbtn" data-unequip="${sl.id}">снять</button></div>`
+      : `<div class="gtip empty"><span class="k">${sl.name} · ${kind}</span><b>Пусто</b><small>${bag.some(x => x.slot === sl.id) ? "В сумке есть вещи для этого слота — они подсвечены." : sl.small ? "Вещи малых слотов падают с находок и продаются у торговца." : "Вещи главных слотов падают с находок и боссов."}</small></div>`;
+  } else if (gearSel?.item) {
+    const it = bag.find(x => x.id === gearSel.item), cur = eq[it.slot] && G.itemOf(eq[it.slot]), d = statDiff(it, cur);
+    tip = `<div class="gtip ${it.rarity}"><span class="k">В сумке · ${slotName(it.slot)} · ${RARITY[it.rarity]} · ${fmt(it.date)}</span><b>${esc(it.name)}</b><small>${esc(G.itemText(it))}${cur ? `<br>Вместо «${esc(cur.name)}»${d ? `: ${d}` : ""}` : ""}</small><button class="ghostbtn" data-equip="${it.id}">надеть</button></div>`;
+  }
+  h += tip;
+  // Итог снаряжения и комплекты.
+  const sum = Object.fromEntries(G.STATS.map(st => [st.id, 0]));
+  for (const id of worn) if (id) for (const [k, v] of Object.entries(G.itemOf(id).stats)) sum[k] += v;
+  const SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
+  h += `<div class="gsum">${G.STATS.map(st => `<div>${SHORT[st.id] || st.name}<b>+${sum[st.id]}</b></div>`).join("")}</div>`;
+  const sets = Object.entries(s.build.sets.n).filter(([, n]) => n >= 1).sort((a, b) => b[1] - a[1]);
+  const vs = f => G.FAMILIES[f].name.toLowerCase();
+  if (sets.length) h += `<p class="gset">${sets.map(([f, n]) => `<b>${G.FAMILIES[f].set}</b> ${n} из 5: ${n >= 4 ? `в боях (${vs(f)}) +${(G.SET2_XP + G.SET4_XP) * 100}% опыта, +${G.SET4_GOLD * 100}% золота, +${G.SET4_FIND * 100}% к находке` : n >= 2 ? `в боях (${vs(f)}) +${G.SET2_XP * 100}% опыта. С 4 вещами ещё +${G.SET4_XP * 100}% опыта, +${G.SET4_GOLD * 100}% золота и +${G.SET4_FIND * 100}% к находке` : `с 2 вещами +${G.SET2_XP * 100}% опыта в боях (${vs(f)})`}`).join("<br>")}</p>`;
+  h += `<div class="gbag-h"><span>СУМКА</span><span>${bag.length ? `${bag.length} ${plural(bag.length, "вещь", "вещи", "вещей")}` : "пусто"}</span></div>`;
   if (!inv.length) return h + `<p class="hint">Вещи падают с находок (шанс растёт с Удачей) и всегда — с боссов.</p>`;
-  h += `<ul class="list inv">${inv.slice().reverse().map(it => {
-    const on = eq[it.slot] === it.id;
-    return `<li class="${it.rarity}"><span><b>${esc(it.name)}</b><small>${G.SLOTS.find(x => x.id === it.slot).name} · ${RARITY[it.rarity]} · ${fmt(it.date)}<br>${esc(G.itemText(it))}</small></span>${on ? "<em>надето</em>" : `<button class="ghostbtn" data-equip="${it.id}">надеть</button>`}</li>`;
-  }).join("")}</ul>`;
+  const cells = Math.max(12, Math.ceil(bag.length / 6) * 6);
+  h += `<div class="gbag">${Array.from({ length: cells }, (_, k) => { const it = bag[k]; return it ? `<button class="gsl ${it.rarity}${it.small ? " small" : ""}${gearSel?.item === it.id ? " sel" : ""}${gearSel?.slot === it.slot ? " fit" : ""}" data-gitem="${it.id}" aria-label="${esc(it.name)}">${gearIcon(it.slot, it)}</button>` : `<i class="gsl empty"></i>`; }).join("")}</div>`;
   return h;
 }
 // ---------- торговец и кузница ----------
-let shopSlot = "weapon", shopStat = "str", forgeSel = [];
+let shopSlot = "weapon", shopStat = "str", shopFam = "goblin", forgeSel = [];
+const shopId = n => G.SLOT_BY_ID[shopSlot].small ? `s:${shopSlot}:${shopStat}:${n}:${shopFam}` : `s:${shopSlot}:${shopStat}:${n}`;
 function shopHTML(s) {
   const b = s.build, gold = s.gold;
   const pc = G.priceOf(G.PRICE_COMMON, b, todayISO()), fee = G.priceOf(G.FORGE_FEE, b, todayISO()), myth = G.priceOf(G.MYTHIC_COST, b, todayISO());
-  const preview = G.itemOf(`s:${shopSlot}:${shopStat}:0`);
+  const preview = G.itemOf(shopId(0)), sleg = G.priceOf(G.SMALL_LEG_COST, b, todayISO());
   let h = `<h2 class="sec">ТОРГОВЕЦ</h2><p class="sub">Золото: <b class="gold">${gold}</b> · всего добыто ${s.goldEarned}. Золото дают только убийства.${G.isFair(todayISO()) ? ` <b class="gold">Ярмарка: всё на ${G.FAIR_DISCOUNT * 100}% дешевле до конца недели.</b>` : ""}</p>
-  <div class="ttabs s4">${G.SLOTS.map(sl => `<button data-sslot="${sl.id}" aria-current="${shopSlot === sl.id}">${sl.name}</button>`).join("")}</div>
+  <div class="ttabs s3">${G.SLOTS.map(sl => `<button data-sslot="${sl.id}" aria-current="${shopSlot === sl.id}">${sl.name}</button>`).join("")}</div>
   <div class="ttabs">${G.STATS.map(st => `<button data-sstat="${st.id}" aria-current="${shopStat === st.id}">${st.name}</button>`).join("")}</div>
+  ${G.SLOT_BY_ID[shopSlot].small ? `<div class="ttabs s4">${G.FAMILY_KEYS.map(f => `<button data-sfam="${f}" aria-current="${shopFam === f}">${G.FAMILIES[f].name}</button>`).join("")}</div>` : ""}
   <button class="act ${gold >= pc ? "gold" : ""}" id="buy" ${gold >= pc ? "" : "disabled"}>КУПИТЬ · ${pc} з.</button>
   <p class="hint">${esc(preview.name)}: ${esc(G.itemText(preview))}. Торговец продаёт только обычные вещи.</p>`;
   // Кузница: две обычные вещи одного слота + плата → редкая с их характеристиками (без узла).
   const commons = s.inventory.filter(it => it.rarity === "common");
   forgeSel = forgeSel.filter(id => commons.some(it => it.id === id));
-  h += `<h2 class="sec">КУЗНИЦА</h2><p class="sub">Выбери две обычные вещи одного слота — кузнец скуёт из них редкую с обеими характеристиками. Плата ${fee} з. Легендарную сковать нельзя.</p>`;
+  h += `<h2 class="sec">КУЗНИЦА</h2><p class="sub">Выбери две обычные вещи одного слота — кузнец скуёт из них редкую с обеими характеристиками. В малых слотах редкая получает характеристику и семью первой вещи. Плата ${fee} з. Легендарку главного слота сковать нельзя.</p>`;
   if (commons.length < 2) h += `<p class="hint">Нужно хотя бы две обычные вещи.</p>`;
   else {
     const selSlot = forgeSel.length && G.itemOf(forgeSel[0]).slot;
     h += `<ul class="list inv forge">${commons.map(it => {
       const on = forgeSel.includes(it.id), can = on || (forgeSel.length < 2 && (!selSlot || selSlot === it.slot));
-      return `<li class="${on ? "sel" : ""}"><span><b>${esc(it.name)}</b><small>${G.SLOTS.find(x => x.id === it.slot).name} · ${esc(G.itemText(it))}${b.eq[it.slot] === it.id ? " · надето" : ""}</small></span><button class="ghostbtn" data-fsel="${it.id}" ${can ? "" : "disabled"}>${on ? "убрать" : "в горн"}</button></li>`;
+      return `<li class="${on ? "sel" : ""}"><span><b>${esc(it.name)}</b><small>${slotName(it.slot)} · ${esc(G.itemText(it))}${b.eq[it.slot] === it.id ? " · надето" : ""}</small></span><button class="ghostbtn" data-fsel="${it.id}" ${can ? "" : "disabled"}>${on ? "убрать" : "в горн"}</button></li>`;
     }).join("")}</ul>`;
     if (forgeSel.length === 2) {
       const out = G.itemOf(forgeId(forgeSel));
       h += `<button class="act ${gold >= fee ? "gold" : ""}" id="forge" ${gold >= fee ? "" : "disabled"}>СКОВАТЬ · ${fee} з.</button><p class="hint">Выйдет: ${esc(out.name)}, ${esc(G.itemText(out))}.</p>`;
     }
   }
-  const legs = s.inventory.filter(it => it.rarity === "legendary");
+  // Малые легендарки: редкая вещь малого слота + ещё одна вещь того же слота (уходит в горн самая слабая) + плата.
+  const smallRares = s.inventory.filter(it => it.small && it.rarity === "rare");
+  h += `<p class="sub" style="margin-top:14px">Малая легендарка: редкая вещь малого слота становится легендарной (своя характеристика, опыт за свою семью и особый эффект слота). Нужна ещё одна вещь того же слота, она уйдёт в горн. ${sleg} з.</p>`;
+  h += smallRares.length ? `<ul class="list inv">${smallRares.map(it => {
+    const fuel = smallFuel(s, it), L = G.itemOf("S:" + it.id);
+    return `<li class="legendary"><span><b>${esc(it.name)} → ${esc(L.name)}</b><small>${esc(L.desc)}${fuel ? `. В горн: ${esc(fuel.name)}` : `. Нужна ещё одна вещь слота «${slotName(it.slot)}»`}</small></span><button class="ghostbtn" data-sleg="${it.id}" ${fuel && gold >= sleg ? "" : "disabled"}>улучшить</button></li>`;
+  }).join("")}</ul>` : `<p class="hint">Редких вещей малых слотов пока нет: они бывают в находках или куются из двух обычных.</p>`;
+  const legs = s.inventory.filter(it => it.rarity === "legendary" && !it.small);
   h += `<p class="sub" style="margin-top:14px">Пробуждение: легендарная вещь становится мифической (+5 к характеристике, усиленный эффект). Только из своей легендарки, ${myth} з.</p>`;
   h += legs.length ? `<ul class="list inv">${legs.map(it => { const M = G.itemOf("M:" + it.id); return `<li class="mythic"><span><b>${esc(it.name)} → ${esc(M.name)}</b><small>${esc(G.itemText(M))}</small></span><button class="ghostbtn" data-myth="${it.id}" ${gold >= myth ? "" : "disabled"}>пробудить</button></li>`; }).join("")}</ul>` : `<p class="hint">Легендарки пока нет — она падает только с боссов.</p>`;
   return h;
 }
 function forgeId(ids) {
   const [a, b] = ids.map(G.itemOf), n = (S.meta.shop?.log || []).length;
-  return `f:${a.slot}:${Object.keys(a.stats)[0]}:${Object.keys(b.stats)[0]}:${n}`;
+  return `f:${a.slot}:${Object.keys(a.stats)[0]}:${Object.keys(b.stats)[0]}:${n}${a.small ? ":" + a.family : ""}`;
+}
+// Что уйдёт в горн при улучшении до малой легендарки: обычная вещь того же слота (лучше не надетая), иначе другая редкая.
+function smallFuel(s, it) {
+  const worn = new Set(Object.values(s.build.eq));
+  const c = s.inventory.filter(x => x.id !== it.id && x.slot === it.slot && (x.rarity === "common" || x.rarity === "rare"));
+  return c.sort((a, b) => (a.rarity === "common" ? 0 : 2) + worn.has(a.id) - ((b.rarity === "common" ? 0 : 2) + worn.has(b.id)))[0] || null;
 }
 // Запись в журнал лавки. Если израсходованная вещь была надета, на её место сразу надевается новая.
 function shopAct(act, id, use, cost) {
@@ -967,16 +1038,23 @@ main.addEventListener("click", e => {
     else if (SUM.skillFree > 0 && G.canTakeNode(b.nodes, id)) b.nodes.push(id);
     saveHero(); return;
   }
+  const gs = e.target.closest("[data-gslot]"), gi = e.target.closest("[data-gitem]");
+  if (gs || gi) {
+    const v = gs ? { slot: gs.dataset.gslot } : { item: gi.dataset.gitem };
+    gearSel = gearSel && (gearSel.slot === v.slot && v.slot || gearSel.item === v.item && v.item) ? null : v;
+    renderHero(); return;
+  }
   const eq = e.target.closest("[data-equip]"), uq = e.target.closest("[data-unequip]");
   if (eq || uq) {
+    gearSel = eq ? { slot: G.itemOf(eq.dataset.equip).slot } : gearSel;
     const [g] = todayEntry("gear", () => ({ eq: G.gearAt(S.meta, "9999-12-31") }));
     if (eq) g.eq[G.itemOf(eq.dataset.equip).slot] = eq.dataset.equip; else delete g.eq[uq.dataset.unequip];
     saveHero(); return;
   }
-  const ss = e.target.closest("[data-sslot]"), sst = e.target.closest("[data-sstat]");
-  if (ss || sst) { if (ss) shopSlot = ss.dataset.sslot; else shopStat = sst.dataset.sstat; renderHero(); return; }
+  const ss = e.target.closest("[data-sslot]"), sst = e.target.closest("[data-sstat]"), sf = e.target.closest("[data-sfam]");
+  if (ss || sst || sf) { if (ss) shopSlot = ss.dataset.sslot; else if (sst) shopStat = sst.dataset.sstat; else shopFam = sf.dataset.sfam; renderHero(); return; }
   if (e.target.closest("#buy")) {
-    const cost = G.priceOf(G.PRICE_COMMON, SUM.build, todayISO()), it = G.itemOf(`s:${shopSlot}:${shopStat}:${(S.meta.shop?.log || []).length}`);
+    const cost = G.priceOf(G.PRICE_COMMON, SUM.build, todayISO()), it = G.itemOf(shopId((S.meta.shop?.log || []).length));
     if (confirm(`Купить «${it.name}» за ${cost} золота?`)) { shopAct("buy", it.id, [], cost); toast(`Куплено: ${it.name}`); }
     return;
   }
@@ -985,6 +1063,14 @@ main.addEventListener("click", e => {
   if (e.target.closest("#forge") && forgeSel.length === 2) {
     const id = forgeId(forgeSel), cost = G.priceOf(G.FORGE_FEE, SUM.build, todayISO());
     if (confirm(`Сковать «${G.itemOf(id).name}»? Две вещи уйдут в горн, плата ${cost} золота.`)) { const use = forgeSel; forgeSel = []; shopAct("forge", id, use, cost); toast(`Скована: ${G.itemOf(id).name}`); }
+    return;
+  }
+  const sl = e.target.closest("[data-sleg]");
+  if (sl) {
+    const base = SUM.inventory.find(x => x.id === sl.dataset.sleg), fuel = base && smallFuel(SUM, base);
+    if (!fuel) return;
+    const id = "S:" + base.id, cost = G.priceOf(G.SMALL_LEG_COST, SUM.build, todayISO());
+    if (confirm(`Улучшить «${base.name}» до «${G.itemOf(id).name}» за ${cost} золота? «${fuel.name}» уйдёт в горн.`)) { shopAct("smallleg", id, [base.id, fuel.id], cost); toast(`Выкована: ${G.itemOf(id).name}`); }
     return;
   }
   const my = e.target.closest("[data-myth]");
