@@ -76,3 +76,5 @@ github.com → Settings → Developer settings → Fine-grained tokens → Gener
 | `app.js`, `index.html`, `style.css` | интерфейс |
 | `sw.js`, `app.webmanifest` | офлайн и установка. После изменения файлов поднять `VERSION` в `sw.js` |
 | `assets/monsters/` | картинки монстров, боссов, хозяина таверны и патруля (`patrol.webp`) |
+| `assets/gear/` | картинки вещей, фигура героя (`hero-doll.webp`) и лицо героя в шапке (`hero-face.webp`) |
+| `assets/art/` | пейзажи подземелий (`dungeon-*`), торговец и кузнец (`npc-*`), значки событий (`event-*`); новую картинку вписать в `ART` в `app.js` и в `sw.js` |
