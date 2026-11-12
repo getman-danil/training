@@ -114,7 +114,7 @@ const statIcon = id => svg(STAT_ICON[id]);
 const STAT_SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
 // Картинки из Gemini, которые уже лежат в assets/art (имя без .webp): пейзажи подземелий dungeon-<ключ>,
 // персонажи npc-merchant и npc-smith, значки событий event-<moon|fair|winter|undead>. Пока картинки нет — рисуется запасной фон.
-const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead"]);
+const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "dungeon-labyrinth", "dungeon-swamp", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead"]);
 const art = name => ART.has(name) ? `assets/art/${name}.webp` : "";
 
 // ---------- маршруты ----------

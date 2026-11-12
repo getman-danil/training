@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v36";
+const VERSION = "v37";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -33,6 +33,8 @@ const FILES = [
   "assets/art/dungeon-throne.webp",
   "assets/art/dungeon-ash.webp",
   "assets/art/dungeon-grove.webp",
+  "assets/art/dungeon-labyrinth.webp",
+  "assets/art/dungeon-swamp.webp",
   "assets/art/npc-merchant.webp",
   "assets/art/npc-smith.webp",
   "assets/art/event-moon.webp",
