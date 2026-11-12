@@ -76,6 +76,7 @@ function commitCur(L) { if (cur.sortie) commitSortie(L); else commit(cur.day, L)
 // ---------- верхняя панель ----------
 function renderTop() {
   $("#lvl").textContent = SUM.level;
+  const face = heroFace(SUM.level), fi = document.querySelector("#lvlBtn .face"); if (!fi.src.endsWith(face)) fi.src = face;
   $("#lvlBtn").classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
   document.querySelector('.tabs [data-tab="hero"]').classList.toggle("pts", SUM.free > 0 || SUM.skillFree > 0);
   document.querySelector('.tabs [data-tab="chronicle"]').classList.toggle("pts", SUM.unclaimed > 0);
@@ -114,7 +115,7 @@ const statIcon = id => svg(STAT_ICON[id]);
 const STAT_SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
 // Картинки из Gemini, которые уже лежат в assets/art (имя без .webp): пейзажи подземелий dungeon-<ключ>,
 // персонажи npc-merchant и npc-smith, значки событий event-<moon|fair|winter|undead>. Пока картинки нет — рисуется запасной фон.
-const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "dungeon-labyrinth", "dungeon-swamp", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead"]);
+const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "dungeon-labyrinth", "dungeon-swamp", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead", "loot-chest", "sortie", "tavern"]);
 const art = name => ART.has(name) ? `assets/art/${name}.webp` : "";
 
 // ---------- маршруты ----------
@@ -229,7 +230,7 @@ function updateStage(animate, info) {
   const host = $("#bannerHost");
   const back = Object.entries(G.REVENGE).find(([, r]) => r.from === day.date);
   const pd = SUM.perDay[day.date], loot = (pd?.loot || []).map(G.itemOf);
-  const found = (loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "") + (pd?.trophy ? `<br>трофей: <span class="legendary">${esc(pd.trophy)}</span>` : "");
+  const found = (loot.length && art("loot-chest") ? `<img class="chest" src="${art("loot-chest")}" alt="">` : "") + (loot.length ? `<br>добыча: ${loot.map(it => `<span class="${it.rarity}">${esc(it.name)}</span>`).join(", ")}` : "") + (pd?.trophy ? `<br>трофей: <span class="legendary">${esc(pd.trophy)}</span>` : "");
   if (b.killed) host.innerHTML = `<div class="banner">${m.tavern ? "СПАРРИНГ ВЫИГРАН" : m.boss ? "БОСС ПОВЕРЖЕН" : G.REVENGE[day.date] ? "РЕВАНШ ВЗЯТ" : m.elite ? "ЭЛИТА ПОВЕРЖЕНА" : "ВРАГ ПОВЕРЖЕН"}<small>+${pd?.xp || 0} опыта${pd?.inspired ? " (вдохновение)" : ""}${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}</small></div>`;
   else if (L?.skipped) host.innerHTML = `<div class="banner grey">МОНСТР УШЁЛ<small>тренировка пропущена · без штрафа</small></div>`;
   else if (L?.finished && b.dealt > 0) host.innerHTML = `<div class="banner red">МОНСТР СБЕЖАЛ<small>${L.replaced ? "тренировка заменена · " : ""}ранен на ${Math.round(b.pct * 100)}% · +${pd?.xp || 0} опыта${pd?.gold ? ` · +${pd.gold} золота` : ""}${found}${back ? `<br>вернётся ${fmt(G.DAY_BY_DATE[back[0]].on)} — добей его` : ""}</small></div>`;
@@ -353,6 +354,7 @@ function offPlanHTML(day, L) {
   </details>`;
 }
 function sortieSVG() {
+  if (art("sortie")) return `<img class="torch" src="${art("sortie")}" alt="">`;
   // Знамя вылазки.
   return `<svg class="torch" viewBox="0 0 40 40" aria-hidden="true"><path d="M11 4v33" stroke="#c9a24a" stroke-width="2"/><path d="M12 6h18l-5 6l5 6h-18z" fill="#8e1a12" stroke="#c9a24a" stroke-width="1"/></svg>`;
 }
@@ -700,6 +702,7 @@ function renderJourney() {
       }).join("") + srt.filter(L => G.sortieDate(L) >= w.onFrom && G.sortieDate(L) <= w.onTo).map(L => `<a class="mon patrol sortie ${L.finished ? "kill" : ""}" href="#/sortie/${esc(L.date)}" title="${esc(L.title || "Вылазка")}">${sortieSVG()}</a>`).join("");
       const manual = (S.meta.freezes || []).includes(w.n), swamp = G.SWAMP_WEEKS.has(w.n);
       const canFreeze = !st.tavern && st.status !== "ok" && st.status !== "future" && (manual || left > 0);
+      if (st.tavern && art("tavern")) h += `<div class="wkban ban hasart" style="background-image:url(${art("tavern")})"><span class="nm">Таверна · отдых</span></div>`;
       if (swamp) h += `<div class="wkban ban d-swamp ${art("dungeon-swamp") ? "hasart" : ""}"${banStyle("swamp")}><span class="nm">${esc(G.SWAMP.name)}</span></div>`;
       h += `<div class="wk ${st.status === "now" ? "now" : ""}"><div class="n">${w.n}</div>
         <div class="mid"><small>${fmt(w.onFrom)}–${fmt(w.onTo)}${G.weekEvents(w).map(e => ` · <span class="evt">${esc(e)}</span>`).join("")}${w.note ? " · " + esc(w.note) : ""}</small><div class="mons">${mons}</div></div>
@@ -993,9 +996,20 @@ const GEAR_ICON = {
 // Картинки вещей из Gemini: assets/gear/gear-<слот>-<семья>.webp для малых слотов (своя у каждой семьи),
 // assets/gear/gear-<слот>.webp для главных, фигура — assets/gear/hero-doll.webp.
 // Добавленную картинку вписать сюда (имя без .webp), иначе остаётся временный значок.
-const GEAR_IMG = new Set(["gear-amulet", "gear-armor", "gear-boots-demon", "gear-boots-dragon", "gear-boots-goblin", "gear-boots-lizard", "gear-boots-minotaur", "gear-boots-orc", "gear-boots-treant", "gear-boots-undead", "gear-cloak-demon", "gear-cloak-dragon", "gear-cloak-goblin", "gear-cloak-lizard", "gear-cloak-minotaur", "gear-cloak-orc", "gear-cloak-treant", "gear-cloak-undead", "gear-gloves-demon", "gear-gloves-dragon", "gear-gloves-goblin", "gear-gloves-lizard", "gear-gloves-minotaur", "gear-gloves-orc", "gear-gloves-treant", "gear-gloves-undead", "gear-helm-demon", "gear-helm-dragon", "gear-helm-goblin", "gear-helm-lizard", "gear-helm-minotaur", "gear-helm-orc", "gear-helm-treant", "gear-helm-undead", "gear-ring", "gear-shield-demon", "gear-shield-dragon", "gear-shield-goblin", "gear-shield-lizard", "gear-shield-minotaur", "gear-shield-orc", "gear-shield-treant", "gear-shield-undead", "gear-weapon", "hero-doll"]);
+const GEAR_IMG = new Set(["gear-amulet", "gear-armor", "gear-boots-demon", "gear-boots-dragon", "gear-boots-goblin", "gear-boots-lizard", "gear-boots-minotaur", "gear-boots-orc", "gear-boots-treant", "gear-boots-undead", "gear-cloak-demon", "gear-cloak-dragon", "gear-cloak-goblin", "gear-cloak-lizard", "gear-cloak-minotaur", "gear-cloak-orc", "gear-cloak-treant", "gear-cloak-undead", "gear-gloves-demon", "gear-gloves-dragon", "gear-gloves-goblin", "gear-gloves-lizard", "gear-gloves-minotaur", "gear-gloves-orc", "gear-gloves-treant", "gear-gloves-undead", "gear-helm-demon", "gear-helm-dragon", "gear-helm-goblin", "gear-helm-lizard", "gear-helm-minotaur", "gear-helm-orc", "gear-helm-treant", "gear-helm-undead", "gear-ring", "gear-shield-demon", "gear-shield-dragon", "gear-shield-goblin", "gear-shield-lizard", "gear-shield-minotaur", "gear-shield-orc", "gear-shield-treant", "gear-shield-undead", "gear-weapon", "hero-doll",
+  "gear-weapon-legendary", "gear-armor-legendary", "gear-amulet-legendary", "gear-ring-legendary",
+  "gear-weapon-mythic", "gear-armor-mythic", "gear-amulet-mythic", "gear-ring-mythic",
+  "gear-u-fang", "gear-u-exam", "gear-u-halfyear", "gear-u-unbent", "gear-u-legend", "hero-1", "hero-3", "hero-4"]);
+// Свой значок у главных легендарок, мификов (gear-<слот>-legendary|mythic) и уникальных вещей (gear-u-<ключ>).
+const gearKey = (slot, it) => it?.rarity === "unique" ? `gear-u-${it.id.split(":")[1]}`
+  : !it?.small && (it?.rarity === "legendary" || it?.rarity === "mythic") && GEAR_IMG.has(`gear-${slot}-${it.rarity}`) ? `gear-${slot}-${it.rarity}`
+  : it?.family ? `gear-${slot}-${it.family}` : `gear-${slot}`;
+// Фигура героя по уровню: 1–6 странник, 7–12 рыцарь (hero-doll), 13–18 паладин, 19+ легенда. Лицо в верхней полоске — оттуда же.
+const HERO_STAGES = [[19, "hero-4"], [13, "hero-3"], [7, "hero-doll"], [1, "hero-1"]];
+const heroStage = lvl => HERO_STAGES.find(([l, k]) => lvl >= l && GEAR_IMG.has(k))?.[1] || "hero-doll";
+const heroFace = lvl => `assets/gear/${heroStage(lvl) === "hero-doll" ? "hero-face" : heroStage(lvl).replace("hero", "hero-face")}.webp`;
 const gearIcon = (slot, it) => {
-  const key = it?.family ? `gear-${slot}-${it.family}` : `gear-${slot}`;
+  const key = gearKey(slot, it);
   if (it && GEAR_IMG.has(key)) return `<img src="assets/gear/${key}.webp" alt="" loading="lazy">`;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">${GEAR_ICON[slot]}</svg>`;
 };
@@ -1021,7 +1035,7 @@ function gearHTML(s) {
   const selSlot = gearSel?.slot || (gearSel?.item && G.itemOf(gearSel.item).slot);
   const cell = sl => { const it = eq[sl.id] && G.itemOf(eq[sl.id]); return `<button class="gsl ${it ? it.rarity : "empty"}${sl.small ? " small" : ""}" data-gslot="${sl.id}" aria-pressed="${selSlot === sl.id}" aria-label="${sl.name}: ${it ? esc(it.name) : "пусто"}">${gearIcon(sl.id, it)}</button>`; };
   const col = side => G.SLOTS.filter(sl => sl.side === side).map(cell).join("");
-  let h = `<div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/hero-doll.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
+  let h = `<div class="doll"><div class="gcol">${col("L")}</div><div class="gfig">${GEAR_IMG.has("hero-doll") ? `<img src="assets/gear/${heroStage(s.level)}.webp" alt="">` : HERO_FIG}<span>${esc(s.shownTitle)} · ур. ${s.level}</span></div><div class="gcol r">${col("R")}</div></div>`;
   // Подсказка к выбранному.
   let tip = `<div class="gtip empty"><span class="k">Снаряжение</span><b>Нажми на слот или вещь в сумке</b><small>Ромбик в углу — малый слот: вещи слабее, зато собираются в комплекты по семьям монстров.</small></div>`;
   if (gearSel?.slot) {
