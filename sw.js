@@ -1,6 +1,6 @@
 // Офлайн: всё приложение и картинки монстров лежат в кэше, открывается без интернета.
 // При обновлении сайта поменяй VERSION — телефон подхватит новую версию при следующем открытии.
-const VERSION = "v36";
+const VERSION = "v38";
 const CACHE = "ashgob-" + VERSION;
 const FILES = [
   "./",
@@ -26,6 +26,12 @@ const FILES = [
   "assets/fonts/CormorantSC-700-cyrillic.woff2",
   "assets/fonts/CormorantSC-700-latin.woff2",
   "assets/gear/hero-face.webp",
+  "assets/gear/hero-face-1.webp",
+  "assets/gear/hero-face-3.webp",
+  "assets/gear/hero-face-4.webp",
+  "assets/art/loot-chest.webp",
+  "assets/art/sortie.webp",
+  "assets/art/tavern.webp",
   "assets/art/dungeon-goblin.webp",
   "assets/art/dungeon-crypt.webp",
   "assets/art/dungeon-orc.webp",
@@ -33,6 +39,8 @@ const FILES = [
   "assets/art/dungeon-throne.webp",
   "assets/art/dungeon-ash.webp",
   "assets/art/dungeon-grove.webp",
+  "assets/art/dungeon-labyrinth.webp",
+  "assets/art/dungeon-swamp.webp",
   "assets/art/npc-merchant.webp",
   "assets/art/npc-smith.webp",
   "assets/art/event-moon.webp",

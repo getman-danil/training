@@ -513,3 +513,9 @@ details.rule p{margin:0 0 12px}
 .events li{align-items:center;justify-content:flex-start}
 .evico{width:44px;height:44px;object-fit:contain;flex:0 0 44px}
 .ban.hasart .m,.ban.hasart .m2,.ban.hasart .nm{text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8)}
+
+/* --- фигура героя по ступеням, сундук находки, значок вылазки --- */
+.gfig img{width:auto;height:min(300px,62vw);max-width:100%;object-fit:contain}
+.banner .chest{display:block;width:64px;height:auto;margin:6px auto 0;filter:drop-shadow(0 0 12px rgba(255,170,60,.45))}
+.mon.sortie img.torch{width:30px;height:30px;object-fit:contain}
+.cardio img.torch{width:72px;height:auto;margin:14px auto 4px;display:block}
