@@ -35,7 +35,8 @@
       "weight": "24 кг",
       "reps": [
         12,
-        12
+        12,
+        8
       ],
       "note": ""
     },
@@ -85,9 +86,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 288,
+    "dealt": 336,
     "overkill": 50,
     "killed": false
   },
-  "updatedAt": 1794836632456
+  "updatedAt": 1794836937136
 }
