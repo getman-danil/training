@@ -33,7 +33,10 @@
       "plan": "3×8",
       "planWeight": "24 кг",
       "weight": "24 кг",
-      "reps": [],
+      "reps": [
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -82,9 +85,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 192,
-    "overkill": 2,
+    "dealt": 288,
+    "overkill": 50,
     "killed": false
   },
-  "updatedAt": 1794836047641
+  "updatedAt": 1794836632456
 }
