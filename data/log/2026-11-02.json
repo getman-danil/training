@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "А — тяга + присед",
   "performedOn": "2026-11-16",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-11-16T14:33:10.761Z",
   "dayNote": "",
   "items": [
     {
@@ -60,7 +60,11 @@
       "plan": "3×10 на руку",
       "planWeight": "24 кг",
       "weight": "24 кг",
-      "reps": [],
+      "reps": [
+        10,
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -69,7 +73,11 @@
       "plan": "3×15",
       "planWeight": "24 кг",
       "weight": "24 кг",
-      "reps": [],
+      "reps": [
+        15,
+        15,
+        15
+      ],
       "note": ""
     },
     {
@@ -78,7 +86,11 @@
       "plan": "3×12",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12,
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -91,9 +103,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 528,
+    "dealt": 960,
     "overkill": 125,
-    "killed": false
+    "killed": true
   },
-  "updatedAt": 1794837851645
+  "updatedAt": 1794839590761
 }
