@@ -47,7 +47,7 @@
       "planWeight": "свой вес",
       "weight": "+8 кг",
       "reps": [
-        null
+        7
       ],
       "note": ""
     },
@@ -88,9 +88,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 336,
-    "overkill": 74,
+    "dealt": 384,
+    "overkill": 87,
     "killed": false
   },
-  "updatedAt": 1794836968764
+  "updatedAt": 1794837114561
 }
