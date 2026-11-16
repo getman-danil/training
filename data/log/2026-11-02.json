@@ -45,8 +45,10 @@
       "name": "Отжимания на брусьях",
       "plan": "4×6",
       "planWeight": "свой вес",
-      "weight": "свой вес",
-      "reps": [],
+      "weight": "+8 кг",
+      "reps": [
+        null
+      ],
       "note": ""
     },
     {
@@ -90,5 +92,5 @@
     "overkill": 74,
     "killed": false
   },
-  "updatedAt": 1794836942945
+  "updatedAt": 1794836968764
 }
