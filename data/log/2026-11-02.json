@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-02",
+  "week": 4,
+  "block": "Блок 1. Возвращение",
+  "title": "А — тяга + присед",
+  "performedOn": "2026-11-16",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Разминка 5–7 мин",
+      "done": true
+    },
+    {
+      "type": "ex",
+      "name": "Подтягивания прямым хватом",
+      "plan": "4×5",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Гоблет-присед, пятки на блинах 2,5 кг",
+      "plan": "3×8",
+      "planWeight": "24 кг",
+      "weight": "24 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания на брусьях",
+      "plan": "4×6",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга гири в наклоне одной рукой (упор рукой в стул)",
+      "plan": "3×10 на руку",
+      "planWeight": "24 кг",
+      "weight": "24 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Ягодичный мост на полу, гиря на тазу",
+      "plan": "3×15",
+      "planWeight": "24 кг",
+      "weight": "24 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Подъём коленей в висе",
+      "plan": "3×12",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "note",
+      "text": "Растяжка задней поверхности бедра",
+      "done": false
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Ящер-копейщик",
+    "hp": 960,
+    "dealt": 0,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1794835215961
+}
