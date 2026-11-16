@@ -20,6 +20,9 @@
       "planWeight": "свой вес",
       "weight": "С резинкой 15 кг",
       "reps": [
+        6,
+        6,
+        6,
         6
       ],
       "note": ""
@@ -79,9 +82,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 48,
-    "overkill": 1,
+    "dealt": 192,
+    "overkill": 2,
     "killed": false
   },
-  "updatedAt": 1794835319620
+  "updatedAt": 1794836047641
 }
