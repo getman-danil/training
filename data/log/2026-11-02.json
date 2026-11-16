@@ -49,6 +49,7 @@
       "reps": [
         7,
         7,
+        7,
         7
       ],
       "note": ""
@@ -90,9 +91,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 480,
-    "overkill": 112,
+    "dealt": 528,
+    "overkill": 125,
     "killed": false
   },
-  "updatedAt": 1794837578083
+  "updatedAt": 1794837851645
 }
