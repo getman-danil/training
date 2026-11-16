@@ -18,8 +18,10 @@
       "name": "Подтягивания прямым хватом",
       "plan": "4×5",
       "planWeight": "свой вес",
-      "weight": "свой вес",
-      "reps": [],
+      "weight": "С резинкой 15 кг",
+      "reps": [
+        6
+      ],
       "note": ""
     },
     {
@@ -77,9 +79,9 @@
   "game": {
     "monster": "Ящер-копейщик",
     "hp": 960,
-    "dealt": 0,
-    "overkill": 0,
+    "dealt": 48,
+    "overkill": 1,
     "killed": false
   },
-  "updatedAt": 1794835215961
+  "updatedAt": 1794835319620
 }
