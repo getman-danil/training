@@ -32,6 +32,7 @@ const FILES = [
   "assets/art/loot-chest.webp",
   "assets/art/sortie.webp",
   "assets/art/tavern.webp",
+  "assets/art/year.webp",
   "assets/art/dungeon-goblin.webp",
   "assets/art/dungeon-crypt.webp",
   "assets/art/dungeon-orc.webp",

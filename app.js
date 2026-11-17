@@ -115,7 +115,7 @@ const statIcon = id => svg(STAT_ICON[id]);
 const STAT_SHORT = { str: "Сила", end: "Вын.", agi: "Ловк.", wil: "Воля", lck: "Удача" };
 // Картинки из Gemini, которые уже лежат в assets/art (имя без .webp): пейзажи подземелий dungeon-<ключ>,
 // персонажи npc-merchant и npc-smith, значки событий event-<moon|fair|winter|undead>. Пока картинки нет — рисуется запасной фон.
-const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "dungeon-labyrinth", "dungeon-swamp", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead", "loot-chest", "sortie", "tavern"]);
+const ART = new Set(["dungeon-goblin", "dungeon-crypt", "dungeon-orc", "dungeon-dragon", "dungeon-throne", "dungeon-ash", "dungeon-grove", "dungeon-labyrinth", "dungeon-swamp", "npc-merchant", "npc-smith", "event-moon", "event-fair", "event-winter", "event-undead", "loot-chest", "sortie", "tavern", "year"]);
 const art = name => ART.has(name) ? `assets/art/${name}.webp` : "";
 
 // ---------- маршруты ----------
@@ -759,7 +759,7 @@ function renderYear() {
   const fight = (x, extra) => x ? `<li><span>${fmt(x.date)} · ${esc(x.name)}</span><span>${extra}</span></li>` : "";
   const recLi = r => `<li><span>${esc(r.name)}<small> · ${r.n} трен.</small></span><span>${r.grew ? `${unitTxt(r.from, r.unit)} → <b class="gold">${unitTxt(r.to, r.unit)}</b>` : unitTxt(r.to, r.unit)}</span></li>`;
   const unitTxt = (p, unit) => `${p.best} ${unit === "сек" ? "с" : unit === "мин" ? "мин" : "повт."}${p.kg > 0 ? " · " + esc(p.weight) : ""}`;
-  let h = `<p class="lead">Итоги года</p><p class="sub">${fmt(G.WEEKS[0].onFrom)}.${G.WEEKS[0].onFrom.slice(0, 4)} — сегодня. Считается из журнала, обновляется после каждой тренировки. <a href="#/progress">← к анализу</a></p>
+  let h = `${art("year") ? `<div class="yearcover" style="background-image:url(${art("year")})"></div>` : ""}<p class="lead">Итоги года</p><p class="sub">${fmt(G.WEEKS[0].onFrom)}.${G.WEEKS[0].onFrom.slice(0, 4)} — сегодня. Считается из журнала, обновляется после каждой тренировки. <a href="#/progress">← к анализу</a></p>
   <div class="stats"><div><b>${y.fights}</b><span>боёв</span></div><div><b>${s.kills}</b><span>убито</span></div><div><b>${s.cardio}</b><span>патрулей</span></div>
   <div><b>${num(y.reps)}</b><span>повторов</span></div><div><b>${num(y.sets)}</b><span>подходов</span></div><div><b>${y.tonnage >= 10000 ? (y.tonnage / 1000).toFixed(1).replace(".", ",") + " т" : num(y.tonnage) + " кг"}</b><span>поднято</span></div>
   <div><b>${y.planPct == null ? "—" : Math.round(y.planPct * 100) + "%"}</b><span>плана</span></div><div><b>${s.streak.best}</b><span>лучшая серия</span></div><div><b>${s.prList.filter(p => !p.custom).length}</b><span>рекордов</span></div>
