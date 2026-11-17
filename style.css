@@ -519,3 +519,4 @@ details.rule p{margin:0 0 12px}
 .banner .chest{display:block;width:64px;height:auto;margin:6px auto 0;filter:drop-shadow(0 0 12px rgba(255,170,60,.45))}
 .mon.sortie img.torch{width:30px;height:30px;object-fit:contain}
 .cardio img.torch{width:72px;height:auto;margin:14px auto 4px;display:block}
+.yearcover{height:170px;margin:0 -16px 6px;background-size:cover;background-position:72% 60%;border-bottom:1px solid var(--line)}
