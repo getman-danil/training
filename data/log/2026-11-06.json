@@ -3,7 +3,7 @@
   "week": 4,
   "block": "Блок 1. Возвращение",
   "title": "В — махи + объём",
-  "performedOn": "2026-11-19",
+  "performedOn": null,
   "finished": false,
   "finishedAt": null,
   "dayNote": "",
@@ -11,7 +11,7 @@
     {
       "type": "note",
       "text": "Разминка 5–7 мин",
-      "done": true
+      "done": false
     },
     {
       "type": "ex",
@@ -81,5 +81,5 @@
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1795034097752
+  "updatedAt": 1795034159824
 }
