@@ -59,7 +59,12 @@
       "plan": "4×6 на руку",
       "planWeight": "16 кг",
       "weight": "16 кг",
-      "reps": [],
+      "reps": [
+        6,
+        6,
+        6,
+        6
+      ],
       "note": ""
     },
     {
@@ -90,9 +95,9 @@
   "game": {
     "monster": "Ящер-ловчий",
     "hp": 1200,
-    "dealt": 600,
+    "dealt": 840,
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1795036386164
+  "updatedAt": 1795036848174
 }
