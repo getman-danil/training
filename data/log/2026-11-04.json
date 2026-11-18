@@ -73,7 +73,11 @@
       "plan": "3×8",
       "planWeight": "16 кг двумя руками",
       "weight": "16 кг двумя руками",
-      "reps": [],
+      "reps": [
+        8,
+        8,
+        8
+      ],
       "note": ""
     },
     {
@@ -82,7 +86,11 @@
       "plan": "3×50 с",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        50,
+        50,
+        50
+      ],
       "note": ""
     },
     {
@@ -95,9 +103,9 @@
   "game": {
     "monster": "Ящер-ловчий",
     "hp": 1200,
-    "dealt": 840,
+    "dealt": 1200,
     "overkill": 0,
-    "killed": false
+    "killed": true
   },
-  "updatedAt": 1795036848174
+  "updatedAt": 1795036858529
 }
