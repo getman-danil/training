@@ -34,6 +34,8 @@
       "planWeight": "16 кг",
       "weight": "16 кг",
       "reps": [
+        8,
+        8,
         8
       ],
       "note": ""
@@ -84,9 +86,9 @@
   "game": {
     "monster": "Ящер-ловчий",
     "hp": 1200,
-    "dealt": 300,
+    "dealt": 420,
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1795035253102
+  "updatedAt": 1795035725787
 }
