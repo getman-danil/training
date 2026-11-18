@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-06",
+  "week": 4,
+  "block": "Блок 1. Возвращение",
+  "title": "В — махи + объём",
+  "performedOn": "2026-11-19",
+  "finished": false,
+  "finishedAt": null,
+  "dayNote": "",
+  "items": [
+    {
+      "type": "note",
+      "text": "Разминка 5–7 мин",
+      "done": true
+    },
+    {
+      "type": "ex",
+      "name": "Махи гирей двумя руками",
+      "plan": "5×10",
+      "planWeight": "24 кг",
+      "weight": "24 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Тяга в кольцах (кольца на уровне пояса, ноги согнуты)",
+      "plan": "3×12 (ниже угол)",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Отжимания от пола",
+      "plan": "3×10 ноги на стуле",
+      "planWeight": "свой вес",
+      "weight": "свой вес",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Выпады назад, гиря у груди",
+      "plan": "3×10 на ногу",
+      "planWeight": "16 кг",
+      "weight": "16 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Молотковые сгибания с гирей + французский жим гири из-за головы (суперсет)",
+      "plan": "3×12 + 3×12 (ниже)",
+      "planWeight": "8 кг",
+      "weight": "8 кг",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "ex",
+      "name": "Скакалка — финишер",
+      "plan": "4×1 мин",
+      "planWeight": "",
+      "weight": "",
+      "reps": [],
+      "note": ""
+    },
+    {
+      "type": "note",
+      "text": "Растяжка задней поверхности бедра",
+      "done": false
+    }
+  ],
+  "skipped": false,
+  "game": {
+    "monster": "Жрец болот",
+    "hp": 1386,
+    "dealt": 0,
+    "overkill": 0,
+    "killed": false
+  },
+  "updatedAt": 1795034097752
+}
