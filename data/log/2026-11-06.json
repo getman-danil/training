@@ -19,7 +19,10 @@
       "plan": "5×10",
       "planWeight": "24 кг",
       "weight": "24 кг",
-      "reps": [],
+      "reps": [
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -77,9 +80,9 @@
   "game": {
     "monster": "Жрец болот",
     "hp": 1386,
-    "dealt": 0,
+    "dealt": 132,
     "overkill": 0,
     "killed": false
   },
-  "updatedAt": 1795462992099
+  "updatedAt": 1795463298327
 }
