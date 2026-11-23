@@ -1,6 +1,6 @@
 {
   "freezes": [],
-  "updatedAt": 1795465590817,
+  "updatedAt": 1795465710431,
   "shifts": [
     {
       "at": "2026-10-19",
@@ -243,6 +243,13 @@
         "id": "s:amulet:lck:1",
         "use": [],
         "cost": 50
+      },
+      {
+        "at": "2026-11-24",
+        "act": "buy",
+        "id": "s:weapon:str:2",
+        "use": [],
+        "cost": 50
       }
     ]
   },
@@ -279,6 +286,16 @@
           "amulet": "s:amulet:lck:1"
         },
         "t": 1794423059816
+      },
+      {
+        "at": "2026-11-24",
+        "eq": {
+          "ring": "s:ring:lck:0",
+          "armor": "c:2026-10-26",
+          "amulet": "s:amulet:lck:1",
+          "weapon": "s:weapon:str:2"
+        },
+        "t": 1795465710431
       }
     ]
   }
