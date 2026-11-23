@@ -4,8 +4,8 @@
   "block": "Блок 1. Возвращение",
   "title": "В — махи + объём",
   "performedOn": "2026-11-24",
-  "finished": false,
-  "finishedAt": null,
+  "finished": true,
+  "finishedAt": "2026-11-23T20:26:10.710Z",
   "dayNote": "",
   "items": [
     {
@@ -21,6 +21,9 @@
       "weight": "24 кг",
       "reps": [
         10,
+        10,
+        10,
+        10,
         10
       ],
       "note": ""
@@ -31,7 +34,11 @@
       "plan": "3×12 (ниже угол)",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        12,
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -40,7 +47,11 @@
       "plan": "3×10 ноги на стуле",
       "planWeight": "свой вес",
       "weight": "свой вес",
-      "reps": [],
+      "reps": [
+        15,
+        10,
+        10
+      ],
       "note": ""
     },
     {
@@ -48,8 +59,12 @@
       "name": "Выпады назад, гиря у груди",
       "plan": "3×10 на ногу",
       "planWeight": "16 кг",
-      "weight": "16 кг",
-      "reps": [],
+      "weight": "24 кг",
+      "reps": [
+        7,
+        10,
+        7
+      ],
       "note": ""
     },
     {
@@ -58,7 +73,11 @@
       "plan": "3×12 + 3×12 (ниже)",
       "planWeight": "8 кг",
       "weight": "8 кг",
-      "reps": [],
+      "reps": [
+        12,
+        12,
+        12
+      ],
       "note": ""
     },
     {
@@ -67,7 +86,12 @@
       "plan": "4×1 мин",
       "planWeight": "",
       "weight": "",
-      "reps": [],
+      "reps": [
+        1,
+        1,
+        1,
+        1
+      ],
       "note": ""
     },
     {
@@ -80,9 +104,9 @@
   "game": {
     "monster": "Жрец болот",
     "hp": 1386,
-    "dealt": 132,
-    "overkill": 0,
-    "killed": false
+    "dealt": 1386,
+    "overkill": 73,
+    "killed": true
   },
-  "updatedAt": 1795463298327
+  "updatedAt": 1795465574311
 }
